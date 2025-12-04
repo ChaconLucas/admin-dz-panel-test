@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat D&Z - Atendimento ao Cliente</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .chat-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        min-height: 600px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chat-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .chat-header h1 {
+        margin-bottom: 5px;
+        font-size: 24px;
+      }
+
+      .chat-header p {
+        opacity: 0.9;
+        font-size: 14px;
+      }
+
+      .user-form {
+        padding: 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #eee;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .form-group input,
+      .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+
+      .form-group input:focus,
+      .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .btn-start {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+        width: 100%;
+      }
+
+      .btn-start:hover {
+        transform: translateY(-2px);
+      }
+
+      .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        min-height: 400px;
+        display: none;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .message.user {
+        flex-direction: row-reverse;
+      }
+
+      .message-content {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .message.user .message-content {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        margin-right: 10px;
+      }
+
+      .message.bot .message-content {
+        background: #f0f0f0;
+        color: #333;
+        margin-left: 10px;
+      }
+
+      .message-avatar {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+
+      .message.user .message-avatar {
+        background: #667eea;
+        color: white;
+      }
+
+      .message.bot .message-avatar {
+        background: #28a745;
+        color: white;
+      }
+
+      .chat-input {
+        padding: 20px;
+        background: #f8f9fa;
+        border-top: 1px solid #eee;
+        display: none;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      .input-group input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 25px;
+        font-size: 16px;
+      }
+
+      .input-group input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .btn-send {
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.3s;
+      }
+
+      .btn-send:hover {
+        background: #5a6fd8;
+      }
+
+      .typing-indicator {
+        display: none;
+        padding: 10px 0;
+        font-style: italic;
+        color: #666;
+      }
+
+      .typing-dots {
+        display: inline-block;
+        animation: dots 1.4s infinite;
+      }
+
+      @keyframes dots {
+        0%,
+        20% {
+          content: "";
+        }
+        40% {
+          content: ".";
+        }
+        60% {
+          content: "..";
+        }
+        80%,
+        100% {
+          content: "...";
+        }
+      }
+
+      .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 8px;
+        margin: 10px 0;
+        border: 1px solid #f5c6cb;
+      }
+
+      .loading {
+        opacity: 0.7;
+        pointer-events: none;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 10px;
+        }
+
+        .chat-container {
+          border-radius: 15px;
+          min-height: 80vh;
+        }
+
+        .user-form {
+          padding: 20px;
+        }
+
+        .chat-header {
+          padding: 15px;
+        }
+
+        .chat-header h1 {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <h1>💬 Chat D&Z</h1>
+        <p>Estamos aqui para ajudar você! Fale conosco.</p>
+      </div>
+
+      <!-- Formulário inicial -->
+      <div class="user-form" id="userForm">
+        <div class="form-group">
+          <label for="nome">Seu Nome</label>
+          <input
+            type="text"
+            id="nome"
+            placeholder="Digite seu nome completo"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Seu Email</label>
+          <input
+            type="email"
+            id="email"
+            placeholder="Digite seu email"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="mensagem">Como podemos ajudar?</label>
+          <textarea
+            id="mensagem"
+            rows="3"
+            placeholder="Descreva sua dúvida ou necessidade..."
+            required
+          ></textarea>
+        </div>
+
+        <button class="btn-start" onclick="iniciarConversa()">
+          Iniciar Conversa
+        </button>
+      </div>
+
+      <!-- Área de mensagens -->
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <div class="typing-indicator" id="typingIndicator">
+        <span class="material-symbols-sharp">smart_toy</span>
+        Atendente está digitando<span class="typing-dots"></span>
+      </div>
+
+      <!-- Input de mensagens -->
+      <div class="chat-input" id="chatInput">
+        <div class="input-group">
+          <input
+            type="text"
+            id="novaMensagem"
+            placeholder="Digite sua mensagem..."
+            onkeypress="if(event.key==='Enter') enviarMensagem()"
+          />
+          <button class="btn-send" onclick="enviarMensagem()">
+            <span class="material-symbols-sharp">send</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let conversaId = null;
+
+      async function iniciarConversa() {
+        const nome = document.getElementById("nome").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const mensagem = document.getElementById("mensagem").value.trim();
+
+        if (!nome || !email || !mensagem) {
+          alert("Por favor, preencha todos os campos.");
+          return;
+        }
+
+        if (!email.includes("@")) {
+          alert("Por favor, digite um email válido.");
+          return;
+        }
+
+        // Mostrar loading
+        document.querySelector(".btn-start").textContent = "Iniciando...";
+        document.querySelector(".btn-start").classList.add("loading");
+
+        try {
+          const response = await fetch(
+            "../php/sistema.php?api=1&endpoint=client&action=start_conversation",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                nome: nome,
+                email: email,
+                mensagem: mensagem,
+              }),
+            }
+          );
+
+          const result = await response.json();
+
+          if (result.success) {
+            conversaId = result.conversa_id;
+
+            // Esconder formulário e mostrar chat
+            document.getElementById("userForm").style.display = "none";
+            document.getElementById("chatMessages").style.display = "block";
+            document.getElementById("chatInput").style.display = "block";
+
+            // Mostrar primeira mensagem
+            adicionarMensagem("user", mensagem, nome);
+
+            // Mostrar resposta da IA
+            setTimeout(() => {
+              adicionarMensagem("bot", result.resposta_ia, "Atendente D&Z");
+            }, 500);
+          } else {
+            mostrarErro(result.error || "Erro ao iniciar conversa");
+          }
+        } catch (error) {
+          console.error("Erro:", error);
+          mostrarErro("Erro de conexão. Tente novamente.");
+        } finally {
+          // Remover loading
+          document.querySelector(".btn-start").textContent = "Iniciar Conversa";
+          document.querySelector(".btn-start").classList.remove("loading");
+        }
+      }
+
+      async function enviarMensagem() {
+        const input = document.getElementById("novaMensagem");
+        const mensagem = input.value.trim();
+
+        if (!mensagem || !conversaId) return;
+
+        // Adicionar mensagem do usuário
+        adicionarMensagem("user", mensagem, "Você");
+        input.value = "";
+
+        // Mostrar indicador de digitação
+        mostrarTyping(true);
+
+        try {
+          const response = await fetch(
+            "../php/sistema.php?api=1&endpoint=client&action=send_message",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                conversa_id: conversaId,
+                mensagem: mensagem,
+              }),
+            }
+          );
+
+          const result = await response.json();
+
+          if (result.success) {
+            setTimeout(() => {
+              mostrarTyping(false);
+              adicionarMensagem("bot", result.resposta, "Atendente D&Z");
+            }, 1000);
+          } else {
+            mostrarTyping(false);
+            mostrarErro(result.error || "Erro ao enviar mensagem");
+          }
+        } catch (error) {
+          console.error("Erro:", error);
+          mostrarTyping(false);
+          mostrarErro("Erro de conexão. Tente novamente.");
+        }
+      }
+
+      function adicionarMensagem(tipo, conteudo, autor) {
+        const container = document.getElementById("chatMessages");
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${tipo}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = "message-avatar";
+        avatar.innerHTML =
+          tipo === "user"
+            ? '<span class="material-symbols-sharp">person</span>'
+            : '<span class="material-symbols-sharp">smart_toy</span>';
+
+        const content = document.createElement("div");
+        content.className = "message-content";
+        content.textContent = conteudo;
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(content);
+
+        container.appendChild(messageDiv);
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function mostrarTyping(show) {
+        const indicator = document.getElementById("typingIndicator");
+        indicator.style.display = show ? "block" : "none";
+
+        if (show) {
+          const container = document.getElementById("chatMessages");
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+
+      function mostrarErro(mensagem) {
+        const container = document.getElementById("chatMessages");
+        const errorDiv = document.createElement("div");
+        errorDiv.className = "error-message";
+        errorDiv.textContent = mensagem;
+        container.appendChild(errorDiv);
+        container.scrollTop = container.scrollHeight;
+      }
+    </script>
+  </body>
+</html>

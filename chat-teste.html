@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat de Teste - D&Z</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .chat-container {
+        max-width: 800px;
+        margin: 20px auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+      .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      .chat-messages {
+        height: 400px;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+      }
+      .message {
+        margin-bottom: 15px;
+        padding: 12px 15px;
+        border-radius: 15px;
+        max-width: 70%;
+        word-wrap: break-word;
+      }
+      .message.user {
+        background: #007bff;
+        color: white;
+        margin-left: auto;
+        text-align: right;
+      }
+      .message.ai {
+        background: white;
+        border: 1px solid #ddd;
+        margin-right: auto;
+      }
+      .chat-input {
+        padding: 20px;
+        border-top: 1px solid #ddd;
+      }
+      .btn-send {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+      }
+      .typing-indicator {
+        display: none;
+        font-style: italic;
+        color: #666;
+        padding: 10px 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-center">
+        <div class="col-12">
+          <div class="chat-container">
+            <div class="chat-header">
+              <h3>
+                <i class="fas fa-robot me-2"></i>Chat de Teste - IA Assistant
+              </h3>
+              <p class="mb-0">Teste suas conversas com a IA aqui</p>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+              <div class="message ai">
+                <strong>IA Assistant:</strong><br />
+                Olá! Sou seu assistente de IA para testes. Como posso ajudá-lo
+                hoje?
+              </div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+              IA está digitando...
+            </div>
+
+            <div class="chat-input">
+              <div class="row g-2">
+                <div class="col">
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="messageInput"
+                    placeholder="Digite sua mensagem..."
+                    maxlength="500"
+                  />
+                </div>
+                <div class="col-auto">
+                  <button class="btn btn-primary btn-send" id="sendButton">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2">
+                <small class="text-muted">
+                  <i class="fas fa-info-circle"></i>
+                  Esta é uma versão de teste independente do sistema de login
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let conversaId = null;
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const messageInput = document.getElementById("messageInput");
+        const sendButton = document.getElementById("sendButton");
+        const chatMessages = document.getElementById("chatMessages");
+        const typingIndicator = document.getElementById("typingIndicator");
+
+        // Iniciar conversa automaticamente
+        iniciarConversa();
+
+        // Event listeners
+        sendButton.addEventListener("click", enviarMensagem);
+        messageInput.addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            enviarMensagem();
+          }
+        });
+
+        async function iniciarConversa() {
+          try {
+            const response = await fetch(
+              "/admin-teste/src/php/sistema.php?api=1&endpoint=client&action=start_conversation",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nome_cliente: "Teste" }),
+              }
+            );
+
+            const result = await response.json();
+            if (result.success) {
+              conversaId = result.conversa_id;
+              console.log("✅ Conversa iniciada:", conversaId);
+            } else {
+              console.error("❌ Erro ao iniciar conversa:", result.error);
+            }
+          } catch (error) {
+            console.error("❌ Erro de conexão:", error);
+          }
+        }
+
+        async function enviarMensagem() {
+          const mensagem = messageInput.value.trim();
+          if (!mensagem || !conversaId) return;
+
+          // Mostrar mensagem do usuário
+          adicionarMensagem(mensagem, "user");
+          messageInput.value = "";
+
+          // Mostrar indicador de digitação
+          typingIndicator.style.display = "block";
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+
+          try {
+            const response = await fetch(
+              "/admin-teste/src/php/sistema.php?api=1&endpoint=client&action=send_message",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  conversa_id: conversaId,
+                  mensagem: mensagem,
+                }),
+              }
+            );
+
+            const result = await response.json();
+
+            // Esconder indicador de digitação
+            typingIndicator.style.display = "none";
+
+            if (result.success && result.resposta_ia) {
+              adicionarMensagem(result.resposta_ia, "ai");
+            } else {
+              adicionarMensagem(
+                "Desculpe, ocorreu um erro. Tente novamente.",
+                "ai"
+              );
+            }
+          } catch (error) {
+            console.error("Erro:", error);
+            typingIndicator.style.display = "none";
+            adicionarMensagem("Erro de conexão. Verifique sua internet.", "ai");
+          }
+        }
+
+        function adicionarMensagem(texto, tipo) {
+          const messageDiv = document.createElement("div");
+          messageDiv.className = `message ${tipo}`;
+
+          if (tipo === "ai") {
+            messageDiv.innerHTML = `<strong>IA Assistant:</strong><br>${texto}`;
+          } else {
+            messageDiv.innerHTML = `<strong>Você:</strong><br>${texto}`;
+          }
+
+          chatMessages.appendChild(messageDiv);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+      });
+    </script>
+  </body>
+</html>

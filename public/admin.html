@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D&Z - Dashboard Admin</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../src/css/dashboard.css" />
+    <link rel="stylesheet" href="../src/css/chat.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Sidebar -->
+      <aside>
+        <div class="top">
+          <div class="logo">
+            <img src="../assets/images/Logodz.png" alt="D&Z Logo" />
+            <h2 class="danger">D&Z</h2>
+          </div>
+          <div class="close" id="close-btn">
+            <span class="material-symbols-sharp">close</span>
+          </div>
+        </div>
+
+        <div class="sidebar">
+          <a href="#" class="panel">
+            <span class="material-symbols-sharp">grid_view</span>
+            <h3>Chat</h3>
+          </a>
+          <a href="#" id="logout-btn">
+            <span class="material-symbols-sharp">logout</span>
+            <h3>Sair</h3>
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main>
+        <h1>Sistema de Chat - D&Z</h1>
+
+        <!-- Estatísticas -->
+        <div class="chat-stats" id="stats-container">
+          <!-- Estatísticas serão carregadas via JavaScript -->
+        </div>
+
+        <!-- Dashboard Chat -->
+        <div class="dashboard-chat">
+          <!-- Lista de Conversas -->
+          <div class="conversations-section">
+            <h3 style="padding: 20px">Conversas</h3>
+            <div class="conversations-list" id="conversas-list">
+              <!-- Conversas serão carregadas via JavaScript -->
+            </div>
+          </div>
+
+          <!-- Área de Chat Ativo -->
+          <div class="chat-area">
+            <div
+              id="mensagens-container"
+              class="chat-messages"
+              style="height: 300px"
+            >
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  height: 100%;
+                  color: #666;
+                "
+              >
+                Selecione uma conversa para ver as mensagens
+              </div>
+            </div>
+
+            <!-- Controles Admin -->
+            <div class="admin-controls">
+              <button id="escalar-btn" class="btn btn-warning">
+                <i class="material-icons">person</i>
+                Escalar
+              </button>
+              <button id="resolver-btn" class="btn btn-success">
+                <i class="material-icons">check_circle</i>
+                Resolver
+              </button>
+            </div>
+
+            <!-- Input Admin -->
+            <div class="chat-input-area">
+              <div class="chat-input-container">
+                <textarea
+                  id="admin-input"
+                  class="chat-input"
+                  placeholder="Digite sua resposta como admin..."
+                  rows="2"
+                ></textarea>
+                <button id="send-admin-btn" class="send-btn" type="button">
+                  <i class="material-icons">send</i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right Panel (opcional para futuras funcionalidades) -->
+      <div class="right">
+        <div class="top">
+          <button id="menu-btn">
+            <span class="material-symbols-sharp">menu</span>
+          </button>
+          <div class="theme-toggler">
+            <span class="material-symbols-sharp active">light_mode</span>
+            <span class="material-symbols-sharp">dark_mode</span>
+          </div>
+          <div class="profile">
+            <div class="info">
+              <p>Olá, <b>Admin</b></p>
+              <small class="text-muted">Administrador</small>
+            </div>
+            <div class="profile-photo">
+              <img src="../assets/images/logo.png" alt="Perfil" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Atividades Recentes -->
+        <div class="recent-updates">
+          <h2>Atividades Recentes</h2>
+          <div class="updates" id="recent-activities">
+            <!-- Atividades serão carregadas via JavaScript -->
+            <div class="update">
+              <div class="profile-photo">
+                <img src="../assets/images/logo.png" alt="" />
+              </div>
+              <div class="message">
+                <p><b>Sistema</b> iniciado com sucesso</p>
+                <small class="text-muted">Há 2 minutos</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../src/js/sistema.js"></script>
+    <script>
+      // Funcionalidade específica do dashboard
+      document.addEventListener("DOMContentLoaded", () => {
+        // Toggle sidebar mobile
+        const menuBtn = document.getElementById("menu-btn");
+        const closeBtn = document.getElementById("close-btn");
+        const sidebar = document.querySelector("aside");
+
+        if (menuBtn) {
+          menuBtn.addEventListener("click", () => {
+            sidebar.style.display = "block";
+          });
+        }
+
+        if (closeBtn) {
+          closeBtn.addEventListener("click", () => {
+            sidebar.style.display = "none";
+          });
+        }
+
+        // Theme toggler
+        const themeToggler = document.querySelector(".theme-toggler");
+        if (themeToggler) {
+          themeToggler.addEventListener("click", () => {
+            document.body.classList.toggle("dark-theme-variables");
+
+            themeToggler
+              .querySelector("span:nth-child(1)")
+              .classList.toggle("active");
+            themeToggler
+              .querySelector("span:nth-child(2)")
+              .classList.toggle("active");
+          });
+        }
+
+        // Verificar autenticação
+        AuthManager.verify().then((logado) => {
+          if (!logado) {
+            window.location.href = "../src/html/login.html";
+          }
+        });
+      });
+    </script>
+
+    <style>
+      /* Estilos específicos para o dashboard de chat */
+      .dashboard-chat {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 0;
+        margin-top: 2rem;
+        height: 600px;
+      }
+
+      .conversations-section {
+        border-right: 1px solid var(--border-color);
+      }
+
+      .chat-area {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chat-area #mensagens-container {
+        flex: 1;
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .message.admin .message-content {
+        background: var(--primary-gradient);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 15px;
+        border-bottom-right-radius: 5px;
+        margin-left: 20px;
+      }
+
+      .message.usuario .message-content {
+        background: #f1f3f4;
+        color: var(--text-primary);
+        padding: 10px 15px;
+        border-radius: 15px;
+        border-bottom-left-radius: 5px;
+        margin-right: 20px;
+      }
+
+      .message.ia .message-content {
+        background: #e3f2fd;
+        color: var(--text-primary);
+        padding: 10px 15px;
+        border-radius: 15px;
+        border-bottom-left-radius: 5px;
+        margin-right: 20px;
+      }
+
+      .message-header {
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+      }
+
+      .message-content {
+        line-height: 1.4;
+      }
+
+      @media (max-width: 768px) {
+        .dashboard-chat {
+          grid-template-columns: 1fr;
+          height: auto;
+        }
+
+        .conversations-section {
+          border-right: none;
+          border-bottom: 1px solid var(--border-color);
+          max-height: 300px;
+          overflow-y: auto;
+        }
+
+        .chat-area {
+          min-height: 400px;
+        }
+      }
+    </style>
+  </body>
+</html>
