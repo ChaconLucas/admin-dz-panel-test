@@ -15,12 +15,12 @@ function carregarConfig() {
     
     // Fallback para valores padrão (apenas para desenvolvimento local)
     if (empty($config['GROQ_API_KEY'])) {
-        $config['GROQ_API_KEY'] = 'SUA_CHAVE_GROQ_AQUI'; // Substitua pela sua chave local
+        $config['GROQ_API_KEY'] = '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'; // Chave do .env.example
     }
     
     if (empty($config['DB_HOST'])) {
         $config['DB_HOST'] = 'localhost';
-        $config['DB_NAME'] = 'admin_sistema';
+        $config['DB_NAME'] = 'teste_dz';
         $config['DB_USER'] = 'root';
         $config['DB_PASS'] = '';
     }
