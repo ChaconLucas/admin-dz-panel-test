@@ -11,7 +11,7 @@ session_start();
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp" rel="stylesheet">
     <style>
         body { 
-            background: linear-gradient(45deg, #ff00d4, #7380ec);
+            background: linear-gradient(45deg, #ff00d4, #e600b8);
             min-height: 100vh;
             font-family: 'Poppins', sans-serif;
         }

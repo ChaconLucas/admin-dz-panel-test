@@ -54,15 +54,19 @@ body:has(.chat-interface) main h1 {
 }
 
 .messages-today .stat-icon {
-  background: linear-gradient(135deg, var(--color-danger), #ff6b9d);
+  background: linear-gradient(
+    135deg,
+    var(--color-danger),
+    var(--color-baby-pink)
+  );
 }
 
 .active-chats .stat-icon {
-  background: linear-gradient(135deg, var(--color-success), #7dd87d);
+  background: linear-gradient(135deg, var(--color-success), #5ae4c4);
 }
 
 .unread-messages .stat-icon {
-  background: linear-gradient(135deg, var(--color-warning), #ffd700);
+  background: linear-gradient(135deg, var(--color-warning), #ffcc77);
 }
 
 .stat-content h3 {
@@ -420,9 +424,9 @@ body:has(.chat-interface) main h1 {
 }
 
 .action-btn.delete:hover {
-  background: #dc3545;
-  border-color: #dc3545;
-  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  box-shadow: 0 2px 8px rgba(255, 0, 212, 0.3);
 }
 
 .action-btn .material-symbols-sharp {
@@ -509,7 +513,7 @@ body:has(.chat-interface) main h1 {
   flex: 1;
   padding: 1rem;
   overflow-y: auto;
-  background: #fafafa;
+  background: var(--color-background);
   max-height: calc(100% - 140px);
   min-height: 200px;
 }
@@ -540,8 +544,12 @@ body:has(.chat-interface) main h1 {
 }
 
 .message-bubble.client .message-content {
-  background: linear-gradient(135deg, #ffffff, #f8f9fa);
-  border: 2px solid #ff00d4;
+  background: linear-gradient(
+    135deg,
+    var(--color-white),
+    var(--color-background)
+  );
+  border: 2px solid var(--color-danger);
   border-radius: 18px 18px 18px 4px;
   padding: 0.8rem 1rem;
   max-width: 70%;
@@ -556,7 +564,7 @@ body:has(.chat-interface) main h1 {
   bottom: 8px;
   width: 0;
   height: 0;
-  border-right: 8px solid #ff00d4;
+  border-right: 8px solid var(--color-danger);
   border-top: 8px solid transparent;
   border-bottom: 8px solid transparent;
 }
@@ -590,7 +598,7 @@ body:has(.chat-interface) main h1 {
   bottom: 8px;
   width: 0;
   height: 0;
-  border-left: 8px solid #ff00d4;
+  border-left: 8px solid var(--color-danger);
   border-top: 8px solid transparent;
   border-bottom: 8px solid transparent;
 }
@@ -619,7 +627,7 @@ body:has(.chat-interface) main h1 {
 
 .message-bubble.admin .message-avatar,
 .message-bubble.ia .message-avatar {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--color-success), #5ae4c4);
   color: white;
   margin: 0;
   align-self: flex-start;
@@ -688,7 +696,7 @@ body:has(.chat-interface) main h1 {
 }
 
 .message-bubble.client .message-text {
-  color: #2c3e50;
+  color: var(--color-dark);
 }
 
 .message-bubble.admin .message-text,
@@ -768,7 +776,7 @@ body:has(.chat-interface) main h1 {
 }
 
 .quick-btn.escalate:hover {
-  background: #ff6b9d;
+  background: var(--color-baby-pink);
   color: white;
   border-color: #ff6b9d;
 }
