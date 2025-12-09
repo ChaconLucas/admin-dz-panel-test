@@ -1464,6 +1464,34 @@ if (mysqli_num_rows($categorias_result) == 0) {
           grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
         }
       }
+
+      /* === DARK MODE COMPATIBILITY === */
+      body.dark-theme-variables .form-input,
+      body.dark-theme-variables .form-select,
+      body.dark-theme-variables .form-textarea {
+        background: var(--color-white);
+        color: var(--color-dark);
+        border-color: var(--color-light);
+      }
+
+      body.dark-theme-variables .form-input:focus,
+      body.dark-theme-variables .form-select:focus,
+      body.dark-theme-variables .form-textarea:focus {
+        background: var(--color-white);
+        color: var(--color-dark);
+        border-color: var(--color-primary);
+      }
+
+      body.dark-theme-variables .form-label,
+      body.dark-theme-variables .form-title,
+      body.dark-theme-variables .section-title,
+      body.dark-theme-variables .upload-text {
+        color: var(--color-dark);
+      }
+
+      body.dark-theme-variables .form-section {
+        background: var(--color-white);
+      }
     </style>
   </head>
   <body>

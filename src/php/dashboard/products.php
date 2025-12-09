@@ -252,25 +252,6 @@ $total_products = mysqli_num_rows($products);
             grid-template-columns: 14rem auto 18rem !important;
         }
         
-        /* Correção do painel direito */
-        .right {
-            margin-top: 1.4rem !important;
-        }
-        
-        .right .top {
-            display: flex !important;
-            justify-content: flex-end !important;
-            gap: 2rem !important;
-            align-items: center !important;
-        }
-        
-        .right .profile {
-            display: flex !important;
-            gap: 1rem !important;
-            text-align: right !important;
-            align-items: center !important;
-        }
-        
         .right .profile .info p {
             margin-bottom: 0.2rem !important;
         }
@@ -285,6 +266,10 @@ $total_products = mysqli_num_rows($products);
             height: 100% !important;
             border-radius: 50% !important;
             object-fit: cover !important;
+        }
+        
+        .right .top button {
+            display: none !important;
         }
         
         main {
@@ -302,6 +287,8 @@ $total_products = mysqli_num_rows($products);
             align-items: center;
             margin-bottom: 1rem;
         }
+
+
         
         .add-product-btn {
             background: var(--color-primary);
@@ -358,10 +345,11 @@ $total_products = mysqli_num_rows($products);
         .filter-group input,
         .filter-group select {
             padding: 0.8rem;
-            border: 1px solid #e8e8e8;
+            border: 1px solid var(--border-color) !important;
             border-radius: 8px;
             font-size: 14px;
-            background: white;
+            background: var(--bg-input) !important;
+            color: var(--text-primary) !important;
             transition: all 0.2s ease;
             height: 44px;
             box-sizing: border-box;
@@ -370,8 +358,8 @@ $total_products = mysqli_num_rows($products);
         .filter-group input:focus,
         .filter-group select:focus {
             outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px rgba(255, 0, 212, 0.1);
+            border-color: var(--accent-pink) !important;
+            box-shadow: 0 0 0 3px rgba(255, 20, 147, 0.2) !important;
         }
         
         .search-input {
@@ -471,14 +459,14 @@ $total_products = mysqli_num_rows($products);
             gap: 1rem;
             align-items: center;
             padding: 1rem;
-            border-bottom: 1px solid #f0f0f0;
+            border: 1px solid var(--color-primary);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
         }
-        
+
         .product-item:last-child {
-            border-bottom: none;
-        }
-        
-        .product-image {
+            margin-bottom: 0;
+        }        .product-image {
             width: 50px;
             height: 50px;
             background: #f5f5f5;
@@ -595,6 +583,45 @@ $total_products = mysqli_num_rows($products);
                 box-shadow: 0 0 15px rgba(244, 67, 54, 0.8);
             }
         }
+
+        /* === THEME TOGGLER STYLES === */
+        .theme-toggler {
+            background: var(--color-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 1.6rem;
+            width: 4.2rem;
+            cursor: pointer;
+            border-radius: var(--border-radius-3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-toggler:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .theme-toggler span {
+            font-size: 1.2rem;
+            width: 50%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--border-radius-3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(0.95) rotate(0deg);
+        }
+
+        .theme-toggler span.active {
+            background: var(--color-danger);
+            color: white;
+            transform: scale(1);
+            box-shadow: 0 4px 8px rgba(255, 0, 212, 0.3);
+        }
         
         /* Botões de Ação - Lado Direito */
         .action-buttons {
@@ -660,6 +687,37 @@ $total_products = mysqli_num_rows($products);
             background: #e91e63;
             transform: scale(1.1);
             opacity: 1;
+        }
+
+        /* Action buttons container dark mode */
+        .action-buttons {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 2px;
+            transition: all 0.3s ease;
+        }
+
+        /* Dark mode compatibility for action buttons */
+        body.dark-theme-variables .action-buttons {
+            background: var(--color-white);
+            border-color: var(--color-primary);
+            border-width: 1px;
+        }
+
+        body.dark-theme-variables .btn-action {
+            color: var(--color-dark);
+        }
+
+        /* Product card border in dark mode */
+        body.dark-theme-variables .product-item {
+            border: 1px solid var(--color-primary);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        body.dark-theme-variables .product-item:last-child {
+            margin-bottom: 0;
         }
         
         /* Responsivo */
@@ -1057,6 +1115,98 @@ $total_products = mysqli_num_rows($products);
     </div>
 
     <style>
+        /* === VARIÁVEIS DASHBOARD COMPATÍVEIS === */
+        :root {
+            --color-primary: #ff00d4;
+            --color-danger: #ff00d4;
+            --color-success: #41f1b6;
+            --color-warning: #ffbb55;
+            --color-white: #fff;
+            --color-info-dark: #7d8da1;
+            --color-info-light: #dce1eb;
+            --color-dark: #363949;
+            --color-light: rgba(132, 139, 200, 0.18);
+            --color-primary-variant: #e600b8;
+            --color-dark-variant: #677483;
+            --color-background: #f6f6f9;
+            --color-baby-pink: #ffccf9;
+
+            --card-border-radius: 2rem;
+            --border-radius-1: 0.4rem;
+            --border-radius-2: 0.8rem;
+            --border-radius-3: 1.2rem;
+
+            --card-padding: 1.8rem;
+            --padding-1: 1.2rem;
+
+            --box-shadow: 0 2rem 3rem var(--color-light);
+            
+            /* Mapeamento para compatibilidade */
+            --bg-primary: var(--color-background);
+            --bg-secondary: var(--color-white);
+            --bg-card: var(--color-white);
+            --bg-input: var(--color-white);
+            --text-primary: var(--color-dark);
+            --text-secondary: var(--color-dark-variant);
+            --text-muted: var(--color-info-dark);
+            --border-color: var(--color-light);
+            --shadow: var(--box-shadow);
+            
+            /* Accent Colors do sistema */
+            --accent-pink: #ff00d4;
+            --accent-green: #41f1b6;
+            --accent-purple: #8b5cf6;
+        }
+
+        /* Dark Theme igual ao dashboard */
+        body.dark-theme-variables {
+            --color-background: #181a1e;
+            --color-white: #202528;
+            --color-dark: #edeffd;
+            --color-dark-variant: #a3bdcc;
+            --color-light: rgba(0, 0, 0, 0.4);
+            --box-shadow: 0 2rem 3rem var(--color-light);
+            
+            /* Atualizar mapeamento para dark mode */
+            --bg-primary: var(--color-background);
+            --bg-secondary: var(--color-white);
+            --bg-card: var(--color-white);
+            --bg-input: var(--color-white);
+            --text-primary: var(--color-dark);
+            --text-secondary: var(--color-dark-variant);
+            --text-muted: var(--color-info-dark);
+            --border-color: var(--color-light);
+            --shadow: var(--box-shadow);
+        }
+
+        /* === GLOBAL DARK MODE === */
+        body {
+            background: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-secondary);
+        }
+
+        *::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
         /* Layout melhorado do card superior */
         .product-item {
             display: grid;
@@ -1064,16 +1214,16 @@ $total_products = mysqli_num_rows($products);
             gap: 12px;
             align-items: center;
             padding: 10px 12px;
-            background: white;
+            background: var(--bg-card) !important;
             border-radius: 6px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border-color) !important;
             margin-bottom: 6px;
             transition: all 0.2s ease;
         }
 
         .product-item:hover {
-            border-color: #ff1493;
-            box-shadow: 0 2px 8px rgba(255, 20, 147, 0.15);
+            border-color: var(--border-hover) !important;
+            box-shadow: 0 2px 8px rgba(255, 20, 147, 0.25) !important;
         }
 
         .product-image {
@@ -1083,8 +1233,8 @@ $total_products = mysqli_num_rows($products);
             align-items: center;
             justify-content: center;
             border-radius: 6px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border-color) !important;
             overflow: hidden;
             flex-shrink: 0;
         }
@@ -1104,13 +1254,13 @@ $total_products = mysqli_num_rows($products);
             margin: 0 0 2px 0;
             font-size: 14px;
             font-weight: 600;
-            color: #1a1a2e;
+            color: var(--text-primary) !important;
             line-height: 1.2;
         }
 
         .product-info small {
             font-size: 11px;
-            color: #64748b;
+            color: var(--text-secondary) !important;
         }
 
         .product-prices {
@@ -1172,7 +1322,7 @@ $total_products = mysqli_num_rows($products);
             padding: 4px 8px;
             border-radius: 12px;
             border: 1px solid;
-            background: rgba(255, 255, 255, 0.9);
+            background: var(--bg-secondary) !important;
             font-size: 12px;
             font-weight: 600;
             transition: all 0.2s ease;
@@ -1557,14 +1707,14 @@ $total_products = mysqli_num_rows($products);
         .variation-type {
             font-size: 10px;
             font-weight: 600;
-            color: #64748b;
+            color: var(--text-muted) !important;
             text-transform: uppercase;
         }
 
         .variation-name {
             font-size: 12px;
             font-weight: 700;
-            color: #1e293b;
+            color: var(--text-primary) !important;
         }
 
         .variation-data {
@@ -1644,26 +1794,26 @@ $total_products = mysqli_num_rows($products);
 
         .stock-label-inline {
             font-size: 10px;
-            color: #64748b;
+            color: var(--text-muted) !important;
             font-weight: 600;
         }
 
         .stock-value-inline {
             font-size: 11px;
             font-weight: 600;
-            color: #1e293b;
+            color: var(--text-primary) !important;
             padding: 2px 6px;
             border-radius: 3px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-input) !important;
+            border: 1px solid var(--border-color) !important;
             cursor: pointer;
             min-width: 25px;
             text-align: center;
         }
 
         .stock-value-inline:hover {
-            border-color: #4f46e5;
-            background: #eef2ff;
+            border-color: var(--accent-purple) !important;
+            background: rgba(139, 92, 246, 0.1) !important;
         }
 
         /* Grid das variações */
@@ -1678,17 +1828,17 @@ $total_products = mysqli_num_rows($products);
             align-items: center;
             gap: 8px;
             padding: 8px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border-color) !important;
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .variation-row:hover {
-            border-color: #ff1493;
-            background: rgba(255, 20, 147, 0.02);
-            box-shadow: 0 1px 4px rgba(255, 20, 147, 0.1);
+            border-color: var(--accent-pink) !important;
+            background: rgba(255, 20, 147, 0.05) !important;
+            box-shadow: 0 1px 4px rgba(255, 20, 147, 0.2) !important;
         }
 
         .variation-image-small {
@@ -1705,13 +1855,13 @@ $total_products = mysqli_num_rows($products);
         .variation-no-image-small {
             width: 32px;
             height: 32px;
-            background: #f1f5f9;
-            border: 1px dashed #cbd5e1;
+            background: var(--bg-secondary) !important;
+            border: 1px dashed var(--border-color) !important;
             border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #94a3b8;
+            color: var(--text-muted) !important;
             font-size: 14px;
         }
 
@@ -1901,8 +2051,8 @@ $total_products = mysqli_num_rows($products);
         .product-variations-section {
             margin-top: 8px;
             margin-bottom: 16px;
-            background: #fafbfc;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border-color) !important;
             border-radius: 8px;
             overflow: hidden;
         }
@@ -1912,19 +2062,19 @@ $total_products = mysqli_num_rows($products);
             align-items: center;
             justify-content: space-between;
             padding: 8px 12px;
-            background: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
+            background: var(--bg-card) !important;
+            border-bottom: 1px solid var(--border-color) !important;
             cursor: pointer;
             transition: all 0.2s ease;
             font-size: 12px;
             font-weight: 500;
-            color: #475569;
+            color: var(--text-secondary) !important;
         }
 
         .variations-header-compact:hover {
-            background: rgba(255, 20, 147, 0.05);
-            color: #ff1493;
-            border-color: #ff1493;
+            background: rgba(255, 20, 147, 0.1) !important;
+            color: var(--accent-pink) !important;
+            border-color: var(--accent-pink) !important;
         }
 
         .variations-title-compact {
@@ -1970,11 +2120,13 @@ $total_products = mysqli_num_rows($products);
             input.value = currentValue;
             input.style.width = field === 'estoque' ? '60px' : '80px';
             input.style.padding = '6px';
-            input.style.border = '2px solid var(--color-primary)';
+            input.style.border = '2px solid var(--accent-pink)';
             input.style.borderRadius = '4px';
             input.style.textAlign = 'center';
             input.style.fontSize = '14px';
             input.style.fontWeight = 'bold';
+            input.style.background = 'var(--bg-input)';
+            input.style.color = 'var(--text-primary)';
             
             // Placeholder informativo
             if (field === 'preco_promocional') {
@@ -2198,6 +2350,47 @@ $total_products = mysqli_num_rows($products);
                 }
             }
         }
+
+        // === DARK MODE TOGGLE ===
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggler = document.querySelector('.theme-toggler');
+            const lightIcon = themeToggler.querySelector('span:first-child');
+            const darkIcon = themeToggler.querySelector('span:last-child');
+            const body = document.body;
+            
+            // Carregar preferência salva
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            
+            function setTheme(theme) {
+                if (theme === 'light') {
+                    body.classList.remove('dark-theme-variables');
+                    lightIcon.classList.add('active');
+                    darkIcon.classList.remove('active');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    body.classList.add('dark-theme-variables');
+                    lightIcon.classList.remove('active');
+                    darkIcon.classList.add('active');
+                    localStorage.setItem('theme', 'dark');
+                }
+            }
+            
+            // Aplicar tema inicial
+            setTheme(savedTheme);
+            
+            // Toggle ao clicar
+            themeToggler.addEventListener('click', function() {
+                const currentTheme = localStorage.getItem('theme') || 'dark';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                setTheme(newTheme);
+                
+                // Animação suave
+                themeToggler.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    themeToggler.style.transform = 'scale(1)';
+                }, 150);
+            });
+        });
     </script>
 </body>
 </html>
