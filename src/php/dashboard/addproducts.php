@@ -1384,6 +1384,9 @@ if (mysqli_num_rows($categorias_result) == 0) {
         background: var(--color-white);
         border-radius: 12px;
         box-shadow: var(--box-shadow);
+        margin-top: 2rem;
+        position: relative;
+        z-index: 1;
       }
       
       .btn {
@@ -1458,6 +1461,8 @@ if (mysqli_num_rows($categorias_result) == 0) {
         
         .form-actions {
           flex-direction: column;
+          gap: 0.75rem;
+          padding: 1.5rem;
         }
         
         .images-preview {
@@ -1491,6 +1496,89 @@ if (mysqli_num_rows($categorias_result) == 0) {
 
       body.dark-theme-variables .form-section {
         background: var(--color-white);
+      }
+
+      /* === MODERN TOAST NOTIFICATIONS === */
+      .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .toast {
+        min-width: 300px;
+        max-width: 500px;
+        padding: 16px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        transform: translateX(100%);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-left: 4px solid;
+      }
+
+      .toast.show {
+        transform: translateX(0);
+        opacity: 1;
+      }
+
+      .toast-success {
+        background: rgba(76, 175, 80, 0.95);
+        border-left-color: #4CAF50;
+        color: white;
+      }
+
+      .toast-error {
+        background: rgba(244, 67, 54, 0.95);
+        border-left-color: #f44336;
+        color: white;
+      }
+
+      .toast-warning {
+        background: rgba(255, 193, 7, 0.95);
+        border-left-color: #FFC107;
+        color: #333;
+      }
+
+      .toast-info {
+        background: rgba(33, 150, 243, 0.95);
+        border-left-color: #2196F3;
+        color: white;
+      }
+
+      .toast-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+
+      .toast-message {
+        flex: 1;
+        line-height: 1.4;
+      }
+
+      .toast-close {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+      }
+
+      .toast-close:hover {
+        opacity: 1;
       }
     </style>
   </head>
@@ -2401,14 +2489,14 @@ function previewVariationImage(input, variationId) {
     
     // Validar tamanho (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Arquivo muito grande! Escolha uma imagem menor que 5MB.');
+      showWarning('Arquivo muito grande! Escolha uma imagem menor que 5MB.');
       input.value = '';
       return;
     }
     
     // Validar tipo
     if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione apenas arquivos de imagem (PNG, JPG, etc.)');
+      showWarning('Por favor, selecione apenas arquivos de imagem (PNG, JPG, etc.)');
       input.value = '';
       return;
     }
@@ -2686,6 +2774,88 @@ function updateDatalist(datalistId, options) {
         });
     }
 }
+
+// === MODERN TOAST NOTIFICATIONS ===
+function createToast(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icons = {
+        success: 'check_circle',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    };
+    
+    toast.innerHTML = `
+        <span class="material-symbols-sharp toast-icon">${icons[type]}</span>
+        <div class="toast-message">${message}</div>
+        <button class="toast-close">
+            <span class="material-symbols-sharp">close</span>
+        </button>
+    `;
+    
+    // Close button functionality
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        hideToast(toast);
+    });
+    
+    container.appendChild(toast);
+    
+    // Show toast with animation
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    // Auto remove after duration
+    if (duration > 0) {
+        setTimeout(() => hideToast(toast), duration);
+    }
+    
+    return toast;
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+    return container;
+}
+
+function hideToast(toast) {
+    toast.classList.remove('show');
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 400);
+}
+
+// Replace all alert() calls with modern toasts
+window.alert = function(message) {
+    createToast(message, 'info');
+};
+
+// Utility functions for different toast types
+window.showSuccess = function(message) {
+    createToast(message, 'success');
+};
+
+window.showError = function(message) {
+    createToast(message, 'error');
+};
+
+window.showWarning = function(message) {
+    createToast(message, 'warning');
+};
+
+window.showInfo = function(message) {
+    createToast(message, 'info');
+};
 </script>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container"></div>
  </body>
 </html>

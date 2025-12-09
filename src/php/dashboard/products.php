@@ -643,81 +643,178 @@ $total_products = mysqli_num_rows($products);
         /* Container do produto com posição relativa */
         .product-item {
             position: relative !important;
+            overflow: visible;
         }
         
-        .btn-action {
-            width: 24px;
-            height: 24px;
+        /* Botões modernos minimalistas */
+        .product-actions {
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .action-btn {
+            width: 30px;
+            height: 30px;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 14px;
-            transition: opacity 0.2s ease;
-            background: transparent;
-        }
-        
-        .btn-edit {
-            color: #8b5cf6;
-            background: rgba(139, 92, 246, 0.1);
-            border-radius: 4px;
-            padding: 4px;
             transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.8);
+            color: #6b7280;
+            backdrop-filter: blur(4px);
         }
-        
-        .btn-edit:hover {
-            color: #fff;
+
+        .action-btn:hover {
+            transform: scale(1.1);
+            color: white;
+        }
+
+        .edit-btn:hover {
             background: #8b5cf6;
-            transform: scale(1.1);
-            opacity: 1;
-        }
-        
-        .btn-delete {
-            color: #e91e63;
-            background: rgba(233, 30, 99, 0.1);
-            border-radius: 4px;
-            padding: 4px;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-delete:hover {
-            color: #fff;
-            background: #e91e63;
-            transform: scale(1.1);
-            opacity: 1;
         }
 
-        /* Action buttons container dark mode */
-        .action-buttons {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 2px;
-            transition: all 0.3s ease;
+        .delete-btn:hover {
+            background: #ff1493;
         }
 
-        /* Dark mode compatibility for action buttons */
-        body.dark-theme-variables .action-buttons {
-            background: var(--color-white);
-            border-color: var(--color-primary);
-            border-width: 1px;
+
+
+        /* Dark mode minimalista */
+        body.dark-theme-variables .action-btn {
+            background: rgba(0, 0, 0, 0.3);
+            color: #9ca3af;
         }
 
-        body.dark-theme-variables .btn-action {
-            color: var(--color-dark);
+        body.dark-theme-variables .edit-btn:hover {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        body.dark-theme-variables .delete-btn:hover {
+            background: #ff1493;
+            color: white;
         }
 
         /* Product card border in dark mode */
         body.dark-theme-variables .product-item {
-            border: 1px solid var(--color-primary);
+            border: 1px solid var(--color-light);
             border-radius: 8px;
             margin-bottom: 0.5rem;
         }
 
         body.dark-theme-variables .product-item:last-child {
             margin-bottom: 0;
+        }
+
+        /* === MODERN TOAST NOTIFICATIONS === */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            min-width: 300px;
+            max-width: 500px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 4px solid;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-success {
+            background: rgba(76, 175, 80, 0.95);
+            border-left-color: #4CAF50;
+            color: white;
+        }
+
+        .toast-error {
+            background: rgba(244, 67, 54, 0.95);
+            border-left-color: #f44336;
+            color: white;
+        }
+
+        .toast-warning {
+            background: rgba(255, 193, 7, 0.95);
+            border-left-color: #FFC107;
+            color: #333;
+        }
+
+        .toast-info {
+            background: rgba(33, 150, 243, 0.95);
+            border-left-color: #2196F3;
+            color: white;
+        }
+
+        .toast-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .toast-message {
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+
+        /* Dark mode compatibility */
+        body.dark-theme-variables .toast-success {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        body.dark-theme-variables .toast-error {
+            background: rgba(244, 67, 54, 0.9);
+        }
+
+        body.dark-theme-variables .toast-warning {
+            background: rgba(255, 193, 7, 0.9);
+            color: #000;
+        }
+
+        body.dark-theme-variables .toast-info {
+            background: rgba(33, 150, 243, 0.9);
         }
         
         /* Responsivo */
@@ -904,11 +1001,11 @@ $total_products = mysqli_num_rows($products);
 
                         <!-- Informações -->
                         <div class="product-info">
-                            <h4><?php echo htmlspecialchars($product['nome']); ?></h4>
-                            <?php if ($product['sku']): ?>
-                                <small style="color: #666;">SKU: <?php echo htmlspecialchars($product['sku']); ?></small>
-                            <?php endif; ?>
-                        </div>
+                                    <h4><?php echo htmlspecialchars($product['nome']); ?></h4>
+                                    <?php if ($product['sku']): ?>
+                                        <small style="color: #666;">SKU: <?php echo htmlspecialchars($product['sku']); ?></small>
+                                    <?php endif; ?>
+                                </div>
 
                         <!-- Preços -->
                         <div class="product-prices">
@@ -980,15 +1077,13 @@ $total_products = mysqli_num_rows($products);
                             </div>
                         </div>
 
-
-
                         <!-- Botões de Ação -->
-                        <div class="action-buttons">
-                            <button class="btn-action btn-edit" onclick="editProduct(<?php echo $product['id']; ?>)" title="Editar produto">
+                        <div class="product-actions">
+                            <button class="action-btn edit-btn" onclick="editProduct(<?php echo $product['id']; ?>)" title="Editar produto">
                                 <span class="material-symbols-sharp">edit</span>
                             </button>
                             
-                            <button class="btn-action btn-delete" onclick="deleteProduct(<?php echo $product['id']; ?>, '<?php echo addslashes($product['nome']); ?>')" title="Excluir produto">
+                            <button class="action-btn delete-btn" onclick="deleteProduct(<?php echo $product['id']; ?>, '<?php echo addslashes($product['nome']); ?>')" title="Excluir produto">
                                 <span class="material-symbols-sharp">delete</span>
                             </button>
                         </div>
@@ -2159,13 +2254,13 @@ $total_products = mysqli_num_rows($products);
                     if (data.success) {
                         location.reload();
                     } else {
-                        alert('Erro ao atualizar. Tente novamente.');
+                        showError('Erro ao atualizar. Tente novamente.');
                         location.reload();
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    alert('Erro de conexão. Verifique sua internet.');
+                    showError('Erro de conexão. Verifique sua internet.');
                     location.reload();
                 });
             }
@@ -2187,29 +2282,75 @@ $total_products = mysqli_num_rows($products);
             window.location.href = `addproducts.php?edit=${productId}`;
         }
         
-        // Função para excluir produto
+        // === CUSTOM DELETE MODAL ===
+        let productToDelete = null;
+        
         function deleteProduct(productId, productName) {
-            if (confirm(`Tem certeza que deseja excluir o produto "${productName}"?\n\nEsta ação não pode ser desfeita.`)) {
-                fetch('products.php', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: `action=delete_product&id=${productId}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Produto excluído com sucesso!');
-                        location.reload();
-                    } else {
-                        alert('Erro ao excluir produto. Tente novamente.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    alert('Erro de conexão. Tente novamente.');
-                });
-            }
+            productToDelete = productId;
+            document.getElementById('productName').textContent = productName;
+            document.getElementById('deleteModalOverlay').classList.add('show');
         }
+        
+        // Close modal functions
+        function closeDeleteModal() {
+            document.getElementById('deleteModalOverlay').classList.remove('show');
+            productToDelete = null;
+        }
+        
+        // Event listeners for modal (consolidated in single DOMContentLoaded)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Close modal buttons
+            document.getElementById('modalCloseBtn').addEventListener('click', closeDeleteModal);
+            document.getElementById('cancelBtn').addEventListener('click', closeDeleteModal);
+            
+            // Close on overlay click
+            document.getElementById('deleteModalOverlay').addEventListener('click', function(e) {
+                if (e.target === this) closeDeleteModal();
+            });
+            
+            // ESC key to close modal
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('deleteModalOverlay').classList.contains('show')) {
+                    closeDeleteModal();
+                }
+            });
+            
+            // Delete confirmation button
+            document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+                if (productToDelete) {
+                    closeDeleteModal();
+                    
+                    // Add loading state to button
+                    const btn = this;
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<span class="loading-spinner"></span>Excluindo...';
+                    btn.disabled = true;
+                    
+                    fetch('products.php', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `action=delete_product&id=${productToDelete}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showSuccess('Produto excluído com sucesso!');
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            showError('Erro ao excluir produto. Tente novamente.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro:', error);
+                        showError('Erro de conexão. Tente novamente.');
+                    })
+                    .finally(() => {
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    });
+                }
+            });
+        });
 
         // Função para toggle das variações - Nova estrutura
         function toggleVariations(productId) {
@@ -2280,7 +2421,7 @@ $total_products = mysqli_num_rows($products);
                     } else {
                         // Validar formato de preço
                         if (!/^\d+([.,]\d{1,2})?$/.test(newValue)) {
-                            alert('Digite um preço válido (ex: 10,99) ou deixe vazio para herdar do produto');
+                            showWarning('Digite um preço válido (ex: 10,99) ou deixe vazio para herdar do produto');
                             input.focus();
                             return;
                         }
@@ -2288,7 +2429,7 @@ $total_products = mysqli_num_rows($products);
                     }
                 } else if (field === 'estoque') {
                     if (!/^\d+$/.test(newValue)) {
-                        alert('Digite um número válido para o estoque');
+                        showWarning('Digite um número válido para o estoque');
                         input.focus();
                         return;
                     }
@@ -2312,13 +2453,13 @@ $total_products = mysqli_num_rows($products);
                         location.reload();
                     } else {
                         console.error('Erro do servidor:', data.message);
-                        alert('Erro ao salvar: ' + (data.message || 'Erro desconhecido'));
+                        showError('Erro ao salvar: ' + (data.message || 'Erro desconhecido'));
                         location.reload();
                     }
                 })
                 .catch(error => {
                     console.error('Erro de rede:', error);
-                    alert('Erro de conexão. Verifique sua internet e tente novamente.');
+                    showError('Erro de conexão. Verifique sua internet e tente novamente.');
                     location.reload();
                 });
             }
@@ -2391,6 +2532,321 @@ $total_products = mysqli_num_rows($products);
                 }, 150);
             });
         });
+        
+        // === MODERN TOAST NOTIFICATIONS ===
+        function createToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toastContainer') || createToastContainer();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            const icons = {
+                success: 'check_circle',
+                error: 'error',
+                warning: 'warning',
+                info: 'info'
+            };
+            
+            toast.innerHTML = `
+                <span class="material-symbols-sharp toast-icon">${icons[type]}</span>
+                <div class="toast-message">${message}</div>
+                <button class="toast-close">
+                    <span class="material-symbols-sharp">close</span>
+                </button>
+            `;
+            
+            // Close button functionality
+            toast.querySelector('.toast-close').addEventListener('click', () => {
+                hideToast(toast);
+            });
+            
+            container.appendChild(toast);
+            
+            // Show toast with animation
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Auto remove after duration
+            if (duration > 0) {
+                setTimeout(() => hideToast(toast), duration);
+            }
+            
+            return toast;
+        }
+        
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container';
+            document.body.appendChild(container);
+            return container;
+        }
+        
+        function hideToast(toast) {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 400);
+        }
+        
+        // Replace all alert() calls with modern toasts
+        window.alert = function(message) {
+            createToast(message, 'info');
+        };
+        
+        // Utility functions for different toast types
+        window.showSuccess = function(message) {
+            createToast(message, 'success');
+        };
+        
+        window.showError = function(message) {
+            createToast(message, 'error');
+        };
+        
+        window.showWarning = function(message) {
+            createToast(message, 'warning');
+        };
+        
+        window.showInfo = function(message) {
+            createToast(message, 'info');
+        };
     </script>
+
+    <!-- Custom Delete Modal -->
+    <div class="custom-modal-overlay" id="deleteModalOverlay">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <div class="modal-icon-wrapper">
+                    <span class="material-symbols-sharp modal-icon">remove</span>
+                </div>
+                <div class="modal-title-wrapper">
+                    <h3 class="modal-title">Confirmar Exclusão</h3>
+                    <p class="modal-subtitle">Esta ação não pode ser desfeita</p>
+                </div>
+                <button class="modal-close-btn" id="modalCloseBtn">
+                    <span class="material-symbols-sharp">close</span>
+                </button>
+            </div>
+            <div class="custom-modal-body">
+                <p class="modal-message">Tem certeza que deseja excluir o produto <strong id="productName"></strong>?</p>
+                <div class="modal-warning">
+                    <span class="material-symbols-sharp warning-icon">warning</span>
+                    <p>Todos os dados do produto, incluindo variações e imagens, serão removidos permanentemente.</p>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn-cancel" id="cancelBtn">Cancelar</button>
+                <button class="btn-delete" id="confirmDeleteBtn">
+                    <span class="material-symbols-sharp">remove</span>
+                    Excluir Produto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <style>
+        /* === CUSTOM MODAL STYLES === */
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .custom-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .custom-modal {
+            background: var(--color-white);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 480px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: scale(0.7) translateY(-50px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .custom-modal-overlay.show .custom-modal {
+            transform: scale(1) translateY(0);
+        }
+        
+        .custom-modal-header {
+            display: flex;
+            align-items: flex-start;
+            padding: 24px;
+            border-bottom: 1px solid var(--color-light);
+        }
+        
+        .modal-icon-wrapper {
+            background: rgba(244, 67, 54, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            margin-right: 16px;
+        }
+        
+        .modal-icon {
+            color: #f44336;
+            font-size: 24px;
+        }
+        
+        .modal-title-wrapper {
+            flex: 1;
+        }
+        
+        .modal-title {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-dark);
+        }
+        
+        .modal-subtitle {
+            margin: 0;
+            font-size: 14px;
+            color: var(--color-info-dark);
+        }
+        
+        .modal-close-btn {
+            background: none;
+            border: none;
+            color: var(--color-info-dark);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close-btn:hover {
+            background: var(--color-light);
+            color: var(--color-dark);
+        }
+        
+        .custom-modal-body {
+            padding: 0 24px 24px 24px;
+        }
+        
+        .modal-message {
+            margin: 0 0 16px 0;
+            color: var(--color-dark-variant);
+            line-height: 1.5;
+        }
+        
+        .modal-warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        
+        .warning-icon {
+            color: #FFC107;
+            font-size: 18px;
+            margin-top: 1px;
+        }
+        
+        .modal-warning p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--color-dark-variant);
+            line-height: 1.4;
+        }
+        
+        .custom-modal-footer {
+            display: flex;
+            gap: 12px;
+            padding: 0 24px 24px 24px;
+        }
+        
+        .btn-cancel, .btn-delete {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+        }
+        
+        .btn-cancel {
+            background: var(--color-light);
+            color: var(--color-dark-variant);
+            flex: 1;
+        }
+        
+        .btn-cancel:hover {
+            background: var(--color-info-light);
+        }
+        
+        .btn-delete {
+            background: #f44336;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-delete:hover {
+            background: #d32f2f;
+        }
+        
+        .btn-delete:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .loading-spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 6px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Dark mode compatibility */
+        body.dark-theme-variables .custom-modal {
+            background: var(--color-white);
+        }
+        
+        body.dark-theme-variables .custom-modal-header {
+            border-bottom-color: var(--color-light);
+        }
+        
+        body.dark-theme-variables .modal-title {
+            color: var(--color-dark);
+        }
+        
+        body.dark-theme-variables .modal-message {
+            color: var(--color-dark-variant);
+        }
+    </style>
 </body>
 </html>
