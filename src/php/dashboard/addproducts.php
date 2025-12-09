@@ -84,7 +84,8 @@ if (mysqli_num_rows($table_exists) == 0) {
         'destaque' => 'ALTER TABLE produtos ADD COLUMN destaque BOOLEAN DEFAULT FALSE',
         'tags' => 'ALTER TABLE produtos ADD COLUMN tags TEXT',
         'seo_title' => 'ALTER TABLE produtos ADD COLUMN seo_title VARCHAR(255)',
-        'seo_description' => 'ALTER TABLE produtos ADD COLUMN seo_description TEXT'
+        'seo_description' => 'ALTER TABLE produtos ADD COLUMN seo_description TEXT',
+        'imagem_principal' => 'ALTER TABLE produtos ADD COLUMN imagem_principal VARCHAR(255)'
     ];
     
     foreach ($columns_to_add as $column => $sql) {
@@ -111,18 +112,20 @@ if (mysqli_num_rows($variations_exists) == 0) {
         estoque INT DEFAULT 0,
         sku_variacao VARCHAR(100) NULL,
         ativo BOOLEAN DEFAULT TRUE,
+        imagem VARCHAR(255) NULL,
         FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE CASCADE
     )";
     mysqli_query($conexao, $create_variations);
 }
 
-// Verificar se é edição
+// Verificar se é edição ou adição de variação
 $editing = isset($_GET['edit']) && is_numeric($_GET['edit']);
-$produto_id = $editing ? (int)$_GET['edit'] : 0;
+$adding_variation = isset($_GET['produto_id']) && is_numeric($_GET['produto_id']) && isset($_GET['add_variation']);
+$produto_id = $editing ? (int)$_GET['edit'] : ($adding_variation ? (int)$_GET['produto_id'] : 0);
 $produto = null;
 $variacoes = [];
 
-if ($editing) {
+if ($editing || $adding_variation) {
     $sql = "SELECT * FROM produtos WHERE id = ?";
     $stmt = mysqli_prepare($conexao, $sql);
     mysqli_stmt_bind_param($stmt, "i", $produto_id);
@@ -133,6 +136,41 @@ if ($editing) {
     if (!$produto) {
         header('Location: products.php');
         exit();
+    }
+    
+    // Limpar imagens inexistentes do banco de dados
+    if (!empty($produto['imagens'])) {
+        $imagens_db = json_decode($produto['imagens'], true) ?? [];
+        $imagens_existentes_servidor = [];
+        
+        foreach ($imagens_db as $img) {
+            $caminho_img = '../../../assets/images/produtos/' . $img;
+            if (file_exists($caminho_img)) {
+                $imagens_existentes_servidor[] = $img;
+            }
+        }
+        
+        // Se há diferença, atualizar no banco
+        if (count($imagens_existentes_servidor) != count($imagens_db)) {
+            $imagens_json_limpo = json_encode($imagens_existentes_servidor);
+            
+            // Verificar se a imagem principal ainda existe
+            $img_principal_valida = '';
+            if (!empty($produto['imagem_principal']) && in_array($produto['imagem_principal'], $imagens_existentes_servidor)) {
+                $img_principal_valida = $produto['imagem_principal'];
+            } elseif (!empty($imagens_existentes_servidor)) {
+                $img_principal_valida = $imagens_existentes_servidor[0];
+            }
+            
+            $update_images = "UPDATE produtos SET imagens = ?, imagem_principal = ? WHERE id = ?";
+            $stmt_update = mysqli_prepare($conexao, $update_images);
+            mysqli_stmt_bind_param($stmt_update, "ssi", $imagens_json_limpo, $img_principal_valida, $produto_id);
+            mysqli_stmt_execute($stmt_update);
+            
+            // Atualizar dados do produto na variável
+            $produto['imagens'] = $imagens_json_limpo;
+            $produto['imagem_principal'] = $img_principal_valida;
+        }
     }
     
     // Carregar variações do produto
@@ -223,21 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Processar imagens
     $imagens_array = ($produto && isset($produto['imagens'])) ? json_decode($produto['imagens'], true) ?? [] : [];
     
-    // Processar imagens da galeria selecionadas
-    if (!empty($_POST['gallery_images'])) {
-        $gallery_images = json_decode($_POST['gallery_images'], true);
-        if ($gallery_images && is_array($gallery_images)) {
-            foreach ($gallery_images as $gallery_img) {
-                // Extrair apenas o nome do arquivo do caminho
-                if (isset($gallery_img['path'])) {
-                    $filename = basename($gallery_img['path']);
-                    if (!in_array($filename, $imagens_array)) {
-                        $imagens_array[] = $filename;
-                    }
-                }
-            }
-        }
-    }
+    // Upload direto de imagens apenas
     
     // Upload de novas imagens
     if (!empty($_FILES['imagens']['name'][0])) {
@@ -288,6 +312,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     $imagens_json = json_encode($imagens_array);
     
+    // Garantir que a coluna imagem_principal existe
+    $check_img_principal = "SHOW COLUMNS FROM produtos LIKE 'imagem_principal'";
+    $img_principal_exists = mysqli_query($conexao, $check_img_principal);
+    if (mysqli_num_rows($img_principal_exists) == 0) {
+        $add_img_principal = "ALTER TABLE produtos ADD COLUMN imagem_principal VARCHAR(255)";
+        mysqli_query($conexao, $add_img_principal);
+    }
+    
+    // Processar imagem principal selecionada
+    $imagem_principal = isset($_POST['imagem_principal']) ? trim($_POST['imagem_principal']) : '';
+    
+    // Debug: verificar valor recebido
+    error_log("Imagem principal recebida: " . $imagem_principal);
+    error_log("Imagens disponíveis: " . json_encode($imagens_array));
+    
+    // Se não foi definida uma imagem principal mas há imagens disponíveis
+    if (empty($imagem_principal) && !empty($imagens_array)) {
+        $imagem_principal = $imagens_array[0]; // Usar a primeira como padrão
+    }
+    
+    // Verificar se a imagem principal selecionada ainda existe no array
+    if (!empty($imagem_principal) && !in_array($imagem_principal, $imagens_array)) {
+        $imagem_principal = !empty($imagens_array) ? $imagens_array[0] : '';
+    }
+    
     if (empty($errors)) {
         // Verificar quais colunas existem na tabela antes de fazer o SQL
         $existing_columns = [];
@@ -319,6 +368,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'peso' => $peso,
             'dimensoes' => $dimensoes,
             'imagens' => $imagens_json,
+            'imagem_principal' => $imagem_principal,
             'status' => $status,
             'destaque' => $destaque,
             'tags' => $tags,
@@ -339,6 +389,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $params[] = $value;
                 
+                // Debug específico para imagem_principal
+                if ($field == 'imagem_principal') {
+                    error_log("Campo imagem_principal incluído no SQL com valor: " . $value);
+                }
+                
                 // Determinar tipo do parâmetro
                 if (in_array($field, ['preco', 'preco_promocional', 'peso'])) {
                     $types .= 'd';
@@ -346,6 +401,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $types .= 'i';
                 } else {
                     $types .= 's';
+                }
+            } else {
+                // Debug para campos não incluídos
+                if ($field == 'imagem_principal') {
+                    error_log("Campo imagem_principal NÃO encontrado nas colunas existentes!");
+                    error_log("Colunas existentes: " . json_encode($existing_columns));
                 }
             }
         }
@@ -399,7 +460,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'valor' => 'VARCHAR(255)',
                     'sku' => 'VARCHAR(100)',
                     'preco_adicional' => 'DECIMAL(10,2) DEFAULT 0',
-                    'estoque' => 'INT DEFAULT 0'
+                    'estoque' => 'INT DEFAULT 0',
+                    'imagem' => 'VARCHAR(255) NULL',
+                    'preco' => 'DECIMAL(10,2) NULL',
+                    'preco_promocional' => 'DECIMAL(10,2) NULL'
                 ];
                 
                 foreach ($required_var_columns as $column => $definition) {
@@ -409,9 +473,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
                 
-                // Remover constraint UNIQUE de sku_variacao se existir
-                $remove_unique = "ALTER TABLE produto_variacoes DROP INDEX sku_variacao";
-                mysqli_query($conexao, $remove_unique); // Ignora erro se não existir
+                // Verificar e remover constraint UNIQUE de sku_variacao se existir
+                $check_index = "SHOW INDEX FROM produto_variacoes WHERE Key_name = 'sku_variacao'";
+                $index_result = mysqli_query($conexao, $check_index);
+                if ($index_result && mysqli_num_rows($index_result) > 0) {
+                    $remove_unique = "ALTER TABLE produto_variacoes DROP INDEX sku_variacao";
+                    mysqli_query($conexao, $remove_unique);
+                }
                 
                 // Limpar variações existentes se editando
                 if ($editing) {
@@ -422,7 +490,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 
                 // Inserir novas variações
-                $sql_var = "INSERT INTO produto_variacoes (produto_id, tipo, valor, sku, preco_adicional, estoque) VALUES (?, ?, ?, ?, ?, ?)";
+                $sql_var = "INSERT INTO produto_variacoes (produto_id, tipo, valor, sku, preco_adicional, estoque, imagem, preco, preco_promocional) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt_var = mysqli_prepare($conexao, $sql_var);
                 
                 foreach ($_POST['variations'] as $key => $variation) {
@@ -434,6 +502,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $preco_adicional = floatval($variation['preco_adicional'] ?? 0);
                         $estoque_var = intval($variation['estoque'] ?? 0);
                         
+                        // Processar upload de imagem da variação
+                        $imagem_variacao = '';
+                        if (isset($_FILES['variation_images']) && isset($_FILES['variation_images']['name'][$key])) {
+                            $file = [
+                                'name' => $_FILES['variation_images']['name'][$key],
+                                'tmp_name' => $_FILES['variation_images']['tmp_name'][$key],
+                                'error' => $_FILES['variation_images']['error'][$key],
+                                'size' => $_FILES['variation_images']['size'][$key]
+                            ];
+                            
+                            if ($file['error'] === UPLOAD_ERR_OK && !empty($file['name'])) {
+                                $extensoes_permitidas = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                                $extensao = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                                
+                                if (in_array($extensao, $extensoes_permitidas)) {
+                                    $nome_arquivo = uniqid('var_' . time() . '_') . '.' . $extensao;
+                                    $caminho_arquivo = '../../../assets/images/produtos/' . $nome_arquivo;
+                                    
+                                    if (move_uploaded_file($file['tmp_name'], $caminho_arquivo)) {
+                                        $imagem_variacao = $nome_arquivo;
+                                    }
+                                }
+                            }
+                        }
+                        
                         // Gerar SKU único se estiver vazio
                         if (empty($sku_var)) {
                             $sku_var = 'VAR-' . $produto_id . '-' . uniqid();
@@ -441,7 +534,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         // Só inserir se tipo e valor não estiverem vazios
                         if (!empty($tipo) && !empty($valor)) {
-                            mysqli_stmt_bind_param($stmt_var, "isssdi", $produto_id, $tipo, $valor, $sku_var, $preco_adicional, $estoque_var);
+                            // Deixar preços NULL para herdar do produto pai (podem ser editados depois)
+                            $preco_variacao = null; // NULL = herda do produto pai
+                            $preco_promo_variacao = null; // Sem promoção inicialmente
+                            
+                            mysqli_stmt_bind_param($stmt_var, "isssidsdd", $produto_id, $tipo, $valor, $sku_var, $preco_adicional, $estoque_var, $imagem_variacao, $preco_variacao, $preco_promo_variacao);
                             mysqli_stmt_execute($stmt_var);
                         }
                     }
@@ -486,7 +583,15 @@ if (mysqli_num_rows($categorias_result) == 0) {
       rel="stylesheet"
     />
 
-    <title><?php echo $editing ? 'Editar Produto' : 'Novo Produto'; ?> - D&Z Admin</title>
+    <title><?php 
+        if ($adding_variation) {
+            echo 'Adicionar Variação - ' . htmlspecialchars($produto['nome'] ?? 'Produto');
+        } elseif ($editing) {
+            echo 'Editar Produto';
+        } else {
+            echo 'Novo Produto';
+        }
+    ?> - D&Z Admin</title>
     <style>
       /* Estilos do formulário estilo Shopee */
       .form-container {
@@ -669,64 +774,7 @@ if (mysqli_num_rows($categorias_result) == 0) {
         display: block;
       }
       
-      /* Galeria Selector */
-      .gallery-selector {
-        max-height: 400px;
-        overflow-y: auto;
-        border: 2px dashed var(--color-light);
-        border-radius: 8px;
-        padding: 1rem;
-      }
-      
-      .gallery-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 1rem;
-      }
-      
-      .gallery-item {
-        position: relative;
-        cursor: pointer;
-        border-radius: 8px;
-        overflow: hidden;
-        transition: transform 0.3s ease;
-      }
-      
-      .gallery-item:hover {
-        transform: scale(1.05);
-      }
-      
-      .gallery-item img {
-        width: 100%;
-        height: 100px;
-        object-fit: cover;
-      }
-      
-      .gallery-item.selected::after {
-        content: '\2713';
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        background: var(--color-success);
-        color: white;
-        width: 25px;
-        height: 25px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-      }
-      
-      .gallery-item.selected {
-        outline: 3px solid var(--color-success);
-      }
-      
-      .gallery-loading {
-        text-align: center;
-        padding: 2rem;
-        color: var(--color-info-dark);
-      }
+
 
       /* Detalhes e Variações do Produto */
       .product-details-section {
@@ -805,6 +853,238 @@ if (mysqli_num_rows($categorias_result) == 0) {
         margin-bottom: 1.5rem;
         border-left: 4px solid var(--color-info-light);
       }
+      
+      .variation-image-preview {
+        margin-top: 10px;
+      }
+      
+      .variation-image-container {
+        position: relative;
+        display: inline-block;
+        max-width: 120px;
+      }
+      
+      .variation-preview-img {
+        width: 100%;
+        max-width: 120px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+      }
+      
+      .remove-variation-image {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+        z-index: 10;
+      }
+      
+      .remove-variation-image:hover {
+        background: #c82333;
+      }
+      
+      .existing-image-label {
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        font-size: 9px;
+        text-align: center;
+        padding: 2px;
+        border-radius: 0 0 6px 6px;
+      }
+
+      /* Design moderno para upload de imagem da variação */
+      .variation-image-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+      }
+
+      .variation-upload-container {
+        position: relative;
+      }
+
+      .variation-upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #f9fafb;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .variation-upload-area:hover {
+        border-color: #6366f1;
+        background: #f0f0ff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+      }
+
+      .variation-upload-area.has-image {
+        border: 2px solid #10b981;
+        background: #ecfdf5;
+        padding: 0;
+      }
+
+      .upload-icon {
+        margin-bottom: 12px;
+      }
+
+      .upload-icon .material-symbols-sharp {
+        font-size: 32px;
+        color: #6b7280;
+        transition: color 0.3s ease;
+      }
+
+      .variation-upload-area:hover .upload-icon .material-symbols-sharp {
+        color: #6366f1;
+        transform: scale(1.1);
+      }
+
+      .upload-text {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .upload-main {
+        font-weight: 600;
+        color: #374151;
+        font-size: 14px;
+      }
+
+      .upload-sub {
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      .current-image-preview {
+        position: relative;
+        width: 100%;
+        height: 120px;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .current-variation-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .change-image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: white;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .variation-upload-area:hover .change-image-overlay {
+        opacity: 1;
+      }
+
+      .change-image-overlay .material-symbols-sharp {
+        font-size: 24px;
+      }
+
+      .change-image-overlay span:last-child {
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      /* Melhorar preview da nova imagem */
+      .variation-image-preview .variation-image-container {
+        margin-top: 12px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid #10b981;
+      }
+
+      .variation-image-preview .variation-preview-img {
+        border-radius: 8px;
+        border: none;
+      }
+
+      .new-image-preview {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+      }
+
+      .preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .preview-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #059669;
+      }
+
+      .preview-label .material-symbols-sharp {
+        font-size: 16px;
+      }
+
+      .btn-clear-image {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-clear-image:hover {
+        background: #fecaca;
+        border-color: #f87171;
+      }
+
+      .btn-clear-image .material-symbols-sharp {
+        font-size: 14px;
+      }
 
       .variations-help .material-symbols-sharp {
         color: var(--color-danger);
@@ -874,8 +1154,8 @@ if (mysqli_num_rows($categorias_result) == 0) {
       }
 
       .btn-add-variation {
-        background: var(--color-success);
-        color: var(--color-dark);
+        background: var(--color-danger);
+        color: white !important;
         border: none;
         border-radius: var(--border-radius-2);
         padding: 0.75rem 1.5rem;
@@ -891,9 +1171,9 @@ if (mysqli_num_rows($categorias_result) == 0) {
       }
 
       .btn-add-variation:hover {
-        background: #2dd4a6;
+        background: #ff048eff !important;
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(65, 241, 182, 0.3);
+        box-shadow: 0 8px 20px rgba(255, 24, 186, 1);
       }
 
       .variation-fields {
@@ -1002,6 +1282,96 @@ if (mysqli_num_rows($categorias_result) == 0) {
         transform: translate(-50%, -50%);
         color: white;
         font-size: 0.8rem;
+      }
+      
+      /* Seletor de Imagem Principal */
+      .imagem-principal-selector {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+      
+      .miniatura-option {
+        position: relative;
+        cursor: pointer;
+        border: 3px solid transparent;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+      
+      .miniatura-option:hover {
+        transform: scale(1.05);
+      }
+      
+      .miniatura-option.selected {
+        border-color: var(--color-danger);
+        box-shadow: 0 0 15px rgba(255, 0, 212, 0.3);
+      }
+      
+      .miniatura-option img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+      }
+      
+      .miniatura-option::after {
+        content: '';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 20px;
+        height: 20px;
+        border: 2px solid white;
+        border-radius: 50%;
+        background: transparent;
+      }
+      
+      .miniatura-option.selected::after {
+        content: '★';
+        background: var(--color-danger);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      
+      /* Seleção direta nas imagens */
+      .miniatura-selectable {
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .miniatura-selectable:hover {
+        transform: scale(1.02);
+      }
+      
+      .main-indicator {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: var(--color-danger);
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+      
+      .miniatura-selectable.is-main {
+        border: 3px solid var(--color-danger);
+        box-shadow: 0 0 15px rgba(255, 0, 212, 0.3);
+      }
+      
+      .miniatura-selectable.is-main .main-indicator {
+        display: flex;
       }
       
       /* Botões de ação */
@@ -1345,48 +1715,40 @@ if (mysqli_num_rows($categorias_result) == 0) {
                     Imagens do Produto
                   </h2>
 
-                  <div class="image-tabs">
-                    <button type="button" class="tab-btn active" onclick="switchImageTab('upload')">
-                      <span class="material-symbols-sharp">upload</span>
-                      Upload Novo
-                    </button>
-                    <button type="button" class="tab-btn" onclick="switchImageTab('gallery')">
-                      <span class="material-symbols-sharp">photo_library</span>
-                      Da Galeria
-                    </button>
-                  </div>
-                  
-                  <!-- Upload Tab -->
-                  <div id="uploadTab" class="tab-content active">
-                    <div class="image-upload" onclick="document.getElementById('imagens').click()">
-                      <div class="upload-icon">
-                        <span class="material-symbols-sharp">cloud_upload</span>
-                      </div>
-                      <div class="upload-text">Clique ou arraste imagens aqui</div>
-                      <div class="upload-help">Suporta JPG, PNG, GIF, WebP até 5MB cada</div>
-                      <input type="file" id="imagens" name="imagens[]" class="file-input" 
-                             multiple accept="image/*" onchange="previewImages(this)">
+                  <div class="image-upload" onclick="document.getElementById('imagens').click()">
+                    <div class="upload-icon">
+                      <span class="material-symbols-sharp">cloud_upload</span>
                     </div>
+                    <div class="upload-text">Clique ou arraste imagens aqui</div>
+                    <div class="upload-help">Suporta JPG, PNG, GIF, WebP até 5MB cada</div>
+                    <input type="file" id="imagens" name="imagens[]" class="file-input" 
+                           multiple accept="image/*" onchange="previewImages(this)">
                   </div>
-                  
-                  <!-- Gallery Tab -->
-                  <div id="galleryTab" class="tab-content">
-                    <div class="gallery-selector" id="gallerySelector">
-                      <div class="gallery-loading">Carregando imagens da galeria...</div>
-                    </div>
-                  </div>
-                  
-                  <input type="hidden" id="selectedGalleryImages" name="gallery_images" value="">
 
                   <?php if ($produto && !empty($produto['imagens'])): ?>
-                    <?php $imagens_existentes = json_decode($produto['imagens'], true) ?? []; ?>
-                    <?php if (!empty($imagens_existentes)): ?>
+                    <?php 
+                    $imagens_existentes = json_decode($produto['imagens'], true) ?? []; 
+                    // Filtrar apenas imagens que realmente existem no servidor
+                    $imagens_validas = [];
+                    foreach ($imagens_existentes as $img) {
+                        $caminho_img = '../../../assets/images/produtos/' . $img;
+                        if (file_exists($caminho_img)) {
+                            $imagens_validas[] = $img;
+                        }
+                    }
+                    ?>
+                    <?php if (!empty($imagens_validas)): ?>
                       <div class="images-preview" id="existingImages">
-                        <h4 style="grid-column: 1 / -1; margin: 1rem 0 0.5rem 0;">Imagens atuais:</h4>
-                        <?php foreach ($imagens_existentes as $img): ?>
-                          <div class="image-preview">
-                            <img src="../../../assets/images/produtos/<?php echo htmlspecialchars($img); ?>" alt="Produto">
-                            <label class="remove-image" title="Remover imagem">
+                        <h4 style="grid-column: 1 / -1; margin: 1rem 0 0.5rem 0;">Imagens atuais: <small style="color: var(--color-info-dark);">(clique para definir como miniatura)</small></h4>
+                        <?php foreach ($imagens_validas as $index => $img): ?>
+                          <div class="image-preview miniatura-selectable <?php echo ($produto['imagem_principal'] == $img || ($index == 0 && empty($produto['imagem_principal']))) ? 'is-main' : ''; ?>" 
+                               onclick="selectMainImageFromExisting('<?php echo htmlspecialchars($img); ?>', this)">
+                            <img src="../../../assets/images/produtos/<?php echo htmlspecialchars($img); ?>" alt="Produto" 
+                                 onerror="this.parentElement.style.display='none';">
+                            <div class="main-indicator" title="Imagem Principal">
+                              <span class="material-symbols-sharp">star</span>
+                            </div>
+                            <label class="remove-image" title="Remover imagem" onclick="event.stopPropagation()">
                               <input type="checkbox" name="remover_imagens[]" 
                                      value="<?php echo htmlspecialchars($img); ?>" 
                                      style="display: none;" onchange="toggleImageRemoval(this)">
@@ -1397,8 +1759,33 @@ if (mysqli_num_rows($categorias_result) == 0) {
                       </div>
                     <?php endif; ?>
                   <?php endif; ?>
+                  
+                  <!-- Campo único para imagem principal -->
+                  <input type="hidden" name="imagem_principal" id="imagemPrincipal" 
+                         value="<?php 
+                         // Usar imagem principal se ela ainda existe, caso contrário usar primeira válida
+                         $img_principal = $produto['imagem_principal'] ?? '';
+                         if (!empty($img_principal) && isset($imagens_validas) && in_array($img_principal, $imagens_validas)) {
+                             echo htmlspecialchars($img_principal);
+                         } elseif (isset($imagens_validas) && !empty($imagens_validas)) {
+                             echo htmlspecialchars($imagens_validas[0]);
+                         } else {
+                             echo '';
+                         }
+                         ?>">
 
                   <div class="images-preview" id="newImagesPreview"></div>
+                  
+                  <div class="form-group" id="imagemPrincipalGroup" style="display: none;">
+                    <label class="form-label">
+                      <span class="material-symbols-sharp">star</span>
+                      Imagem Principal (Miniatura)
+                    </label>
+                    <div class="imagem-principal-selector" id="imagemPrincipalSelector">
+                      <p class="form-help">Selecione qual imagem será a miniatura principal do produto</p>
+                    </div>
+                    <!-- Campo duplicado removido - usando apenas imagemPrincipal -->
+                  </div>
                 </div>
 
                 <!-- Detalhes do Produto -->
@@ -1587,110 +1974,7 @@ if (mysqli_num_rows($categorias_result) == 0) {
     
 <script src="../../js/dashboard.js"></script>
 <script>
-let selectedGalleryImages = [];
-
-// Função para trocar abas
-function switchImageTab(tab) {
-  // Remover classe active de todas as abas
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-  
-  // Ativar aba selecionada
-  event.target.classList.add('active');
-  document.getElementById(tab + 'Tab').classList.add('active');
-  
-  // Carregar galeria se necessário
-  if (tab === 'gallery') {
-    loadGalleryImages();
-  }
-}
-
-// Carregar imagens da galeria
-async function loadGalleryImages() {
-  const selector = document.getElementById('gallerySelector');
-  try {
-    const response = await fetch('gallery-api.php');
-    const data = await response.json();
-    
-    if (data.success) {
-      let html = '<div class="gallery-grid">';
-      data.images.forEach(img => {
-        html += `
-          <div class="gallery-item" onclick="toggleGalleryImage('${img.nome_arquivo}', '${img.caminho}')" data-filename="${img.nome_arquivo}">
-            <img src="../../../${img.caminho}" alt="${img.nome}">
-          </div>
-        `;
-      });
-      html += '</div>';
-      selector.innerHTML = html;
-    } else {
-      selector.innerHTML = '<div class="gallery-loading">Erro ao carregar imagens</div>';
-    }
-  } catch (error) {
-    selector.innerHTML = '<div class="gallery-loading">Nenhuma imagem encontrada na galeria</div>';
-  }
-}
-
-// Alternar seleção de imagem da galeria
-function toggleGalleryImage(filename, path) {
-  const item = document.querySelector(`[data-filename="${filename}"]`);
-  const index = selectedGalleryImages.findIndex(img => img.filename === filename);
-  
-  if (index > -1) {
-    // Remover seleção
-    selectedGalleryImages.splice(index, 1);
-    item.classList.remove('selected');
-  } else {
-    // Adicionar seleção
-    selectedGalleryImages.push({filename, path});
-    item.classList.add('selected');
-  }
-  
-  // Atualizar campo hidden
-  document.getElementById('selectedGalleryImages').value = JSON.stringify(selectedGalleryImages);
-  
-  // Atualizar preview
-  updateGalleryPreview();
-}
-
-// Atualizar preview das imagens da galeria
-function updateGalleryPreview() {
-  const preview = document.getElementById('imagePreview');
-  let previewHtml = '';
-  
-  if (selectedGalleryImages.length > 0) {
-    previewHtml = '<div class="images-preview">';
-    selectedGalleryImages.forEach(img => {
-      previewHtml += `
-        <div class="image-preview">
-          <img src="../../../${img.path}" alt="Selecionada">
-          <div class="image-name">${img.filename}</div>
-          <button type="button" class="remove-image" onclick="removeGalleryImage('${img.filename}')">
-            <span class="material-symbols-sharp">close</span>
-          </button>
-        </div>
-      `;
-    });
-    previewHtml += '</div>';
-  }
-  
-  preview.innerHTML = previewHtml;
-}
-
-// Remover imagem da galeria selecionada
-function removeGalleryImage(filename) {
-  const index = selectedGalleryImages.findIndex(img => img.filename === filename);
-  if (index > -1) {
-    selectedGalleryImages.splice(index, 1);
-    document.getElementById('selectedGalleryImages').value = JSON.stringify(selectedGalleryImages);
-    
-    // Atualizar UI
-    const item = document.querySelector(`[data-filename="${filename}"]`);
-    if (item) item.classList.remove('selected');
-    
-    updateGalleryPreview();
-  }
-}
+// Upload de imagens simplificado
 
 // Gerenciar variações
 let variationCounter = 0;
@@ -1754,6 +2038,27 @@ function addVariation() {
         <label class="form-label">Estoque</label>
         <input type="number" name="variations[${variationCounter}][estoque]" 
                class="form-input" min="0" value="0" placeholder="0">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label variation-image-label">
+          <span class="material-symbols-sharp">image</span>
+          Imagem da Variação
+        </label>
+        <div class="variation-upload-container">
+          <input type="file" id="variation_file_${variationCounter}" name="variation_images[${variationCounter}]" 
+                 accept="image/*" onchange="previewVariationImage(this, ${variationCounter})" style="display: none;">
+          <div class="variation-upload-area" onclick="document.getElementById('variation_file_${variationCounter}').click()">
+            <div class="upload-icon">
+              <span class="material-symbols-sharp">add_photo_alternate</span>
+            </div>
+            <div class="upload-text">
+              <span class="upload-main">Clique para adicionar foto</span>
+              <span class="upload-sub">PNG, JPG até 5MB</span>
+            </div>
+          </div>
+          <div id="variation_preview_${variationCounter}" class="variation-image-preview"></div>
+        </div>
       </div>
     </div>
   `;
@@ -1840,6 +2145,13 @@ document.addEventListener('DOMContentLoaded', function() {
   if (form) {
     form.addEventListener('submit', function(e) {
       console.log('Form submetido');
+      
+      // Debug específico para imagem principal
+      const imagemPrincipal = document.getElementById('imagemPrincipal');
+      if (imagemPrincipal) {
+        console.log('Imagem principal sendo enviada:', imagemPrincipal.value);
+      }
+      
       const variations = document.querySelectorAll('[name^="variations["]');
       console.log('Variações encontradas:', variations.length);
     });
@@ -1854,15 +2166,28 @@ document.addEventListener('DOMContentLoaded', function() {
           '<?php echo addslashes($variacao['valor']); ?>',
           '<?php echo addslashes($variacao['sku'] ?? ''); ?>',
           <?php echo floatval($variacao['preco_adicional']); ?>,
-          <?php echo intval($variacao['estoque']); ?>
+          <?php echo intval($variacao['estoque']); ?>,
+          '<?php echo addslashes($variacao['imagem'] ?? ''); ?>'
         );
       <?php endforeach; ?>
     }, 100);
   <?php endif; ?>
+  
+  // Garantir que há uma imagem principal selecionada
+  setTimeout(function() {
+    const imagemPrincipal = document.getElementById('imagemPrincipal');
+    if (imagemPrincipal && !imagemPrincipal.value) {
+      const primeiraImagem = document.querySelector('.miniatura-selectable');
+      if (primeiraImagem) {
+        primeiraImagem.click(); // Simular clique na primeira imagem
+      }
+    }
+    console.log('Imagem principal inicial:', imagemPrincipal ? imagemPrincipal.value : 'Campo não encontrado');
+  }, 200);
 });
 
 // Função para carregar variação existente
-function loadExistingVariation(tipo, valor, sku, precoAdicional, estoque) {
+function loadExistingVariation(tipo, valor, sku, precoAdicional, estoque, imagem) {
   variationCounter++;
   
   const container = document.getElementById('variationsContainer');
@@ -1922,6 +2247,36 @@ function loadExistingVariation(tipo, valor, sku, precoAdicional, estoque) {
         <input type="number" name="variations[${variationCounter}][estoque]" 
                class="form-input" min="0" value="${estoque}" placeholder="0">
       </div>
+      
+      <div class="form-group">
+        <label class="form-label variation-image-label">
+          <span class="material-symbols-sharp">image</span>
+          Imagem da Variação
+        </label>
+        <div class="variation-upload-container">
+          <input type="file" id="variation_file_${variationCounter}" name="variation_images[${variationCounter}]" 
+                 accept="image/*" onchange="previewVariationImage(this, ${variationCounter})" style="display: none;">
+          <div class="variation-upload-area ${imagem ? 'has-image' : ''}" onclick="document.getElementById('variation_file_${variationCounter}').click()">
+            ${imagem ? 
+              `<div class="current-image-preview">
+                <img src="../../../assets/images/produtos/${imagem}" alt="Imagem atual" class="current-variation-img">
+                <div class="change-image-overlay">
+                  <span class="material-symbols-sharp">edit</span>
+                  <span>Trocar foto</span>
+                </div>
+              </div>` :
+              `<div class="upload-icon">
+                <span class="material-symbols-sharp">add_photo_alternate</span>
+              </div>
+              <div class="upload-text">
+                <span class="upload-main">Clique para adicionar foto</span>
+                <span class="upload-sub">PNG, JPG até 5MB</span>
+              </div>`
+            }
+          </div>
+          <div id="variation_preview_${variationCounter}" class="variation-image-preview"></div>
+        </div>
+      </div>
     </div>
   `;
   
@@ -1931,42 +2286,192 @@ function loadExistingVariation(tipo, valor, sku, precoAdicional, estoque) {
 
 // Preview de imagens
 function previewImages(input) {
-  const preview = document.getElementById('imagePreview');
-  // Limpar seleção da galeria se upload for usado
-  selectedGalleryImages = [];
-  document.getElementById('selectedGalleryImages').value = '';
+  console.log('🖼️ previewImages chamada, arquivos:', input.files ? input.files.length : 0);
+  
+  const preview = document.getElementById('newImagesPreview');
+  const principalGroup = document.getElementById('imagemPrincipalGroup');
+  const principalSelector = document.getElementById('imagemPrincipalSelector');
+  
+  console.log('Elementos encontrados:', {
+    preview: !!preview,
+    principalGroup: !!principalGroup,
+    principalSelector: !!principalSelector
+  });
+  
   preview.innerHTML = '';
+  principalSelector.innerHTML = '<p class="form-help">Selecione qual imagem será a miniatura principal do produto</p>';
   
-  const newPreview = document.getElementById('newImagesPreview');
-  
-  if (input.files) {
+  if (input.files && input.files.length > 0) {
+    principalGroup.style.display = 'block';
+    
     Array.from(input.files).forEach((file, index) => {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         
         reader.onload = function(e) {
+          // Preview normal
           const imageDiv = document.createElement('div');
           imageDiv.className = 'image-preview';
-          
           imageDiv.innerHTML = `
             <img src="${e.target.result}" alt="Preview ${index + 1}">
             <button type="button" class="remove-image" onclick="removeNewImage(this)" title="Remover">
               <span class="material-symbols-sharp">close</span>
             </button>
           `;
-          
           preview.appendChild(imageDiv);
+          
+          // Seletor de miniatura
+          const miniaturaDiv = document.createElement('div');
+          miniaturaDiv.className = 'miniatura-option';
+          if (index === 0) miniaturaDiv.classList.add('selected');
+          miniaturaDiv.dataset.filename = file.name;
+          miniaturaDiv.onclick = () => selectMainImage(file.name, miniaturaDiv);
+          miniaturaDiv.innerHTML = `<img src="${e.target.result}" alt="Opção ${index + 1}">`;
+          principalSelector.appendChild(miniaturaDiv);
+          
+          // Definir primeira como principal por padrão
+          if (index === 0) {
+            const input = document.getElementById('imagemPrincipal');
+            if (input) input.value = file.name;
+          }
         };
         
         reader.readAsDataURL(file);
       }
     });
+  } else {
+    principalGroup.style.display = 'none';
   }
 }
 
 // Remover nova imagem do preview
 function removeNewImage(button) {
   button.closest('.image-preview').remove();
+}
+
+// Selecionar imagem principal das novas imagens
+function selectMainImage(filename, element) {
+  document.querySelectorAll('.miniatura-option').forEach(opt => {
+    opt.classList.remove('selected');
+  });
+  
+  element.classList.add('selected');
+  
+  const input = document.getElementById('imagemPrincipal');
+  if (input) input.value = filename;
+}
+
+// Preview de imagem da variação
+function previewVariationImage(input, variationId) {
+  const previewDiv = document.getElementById(`variation_preview_${variationId}`);
+  const uploadArea = input.parentElement.querySelector('.variation-upload-area');
+  
+  previewDiv.innerHTML = '';
+  
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    
+    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Arquivo muito grande! Escolha uma imagem menor que 5MB.');
+      input.value = '';
+      return;
+    }
+    
+    // Validar tipo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione apenas arquivos de imagem (PNG, JPG, etc.)');
+      input.value = '';
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      // Atualizar a área de upload com a nova imagem
+      uploadArea.innerHTML = `
+        <div class="current-image-preview">
+          <img src="${e.target.result}" alt="Nova imagem" class="current-variation-img">
+          <div class="change-image-overlay">
+            <span class="material-symbols-sharp">edit</span>
+            <span>Trocar foto</span>
+          </div>
+        </div>
+      `;
+      uploadArea.classList.add('has-image');
+      
+      // Mostrar preview adicional com opção de remover
+      previewDiv.innerHTML = `
+        <div class="new-image-preview">
+          <div class="preview-header">
+            <span class="preview-label">
+              <span class="material-symbols-sharp">photo</span>
+              Nova imagem selecionada
+            </span>
+            <button type="button" onclick="clearVariationImage(${variationId})" class="btn-clear-image" title="Remover imagem">
+              <span class="material-symbols-sharp">close</span>
+              Remover
+            </button>
+          </div>
+        </div>
+      `;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+// Limpar imagem da variação
+function clearVariationImage(variationId) {
+  const input = document.querySelector(`input[name="variation_images[${variationId}]"]`);
+  const preview = document.getElementById(`variation_preview_${variationId}`);
+  const uploadArea = document.querySelector(`#variation_${variationId} .variation-upload-area`);
+  
+  if (input) input.value = '';
+  if (preview) preview.innerHTML = '';
+  
+  if (uploadArea) {
+    uploadArea.classList.remove('has-image');
+    uploadArea.innerHTML = `
+      <div class="upload-icon">
+        <span class="material-symbols-sharp">add_photo_alternate</span>
+      </div>
+      <div class="upload-text">
+        <span class="upload-main">Clique para adicionar foto</span>
+        <span class="upload-sub">PNG, JPG até 5MB</span>
+      </div>
+    `;
+  }
+}
+
+// Selecionar imagem principal das imagens existentes
+function selectMainImageFromExisting(filename, element) {
+  console.log('🎯 Selecionando imagem principal:', filename);
+  
+  // Remover seleção de todas as imagens existentes
+  document.querySelectorAll('.miniatura-selectable').forEach(img => {
+    img.classList.remove('is-main');
+    console.log('Removida classe is-main de:', img.src);
+  });
+  
+  // Adicionar seleção à imagem clicada
+  element.classList.add('is-main');
+  console.log('Adicionada classe is-main a:', element.src);
+  
+  // Atualizar campo hidden único
+  const input = document.getElementById('imagemPrincipal');
+  if (input) {
+    const valorAnterior = input.value;
+    input.value = filename;
+    console.log('✅ Campo atualizado:', valorAnterior, '->', input.value);
+  } else {
+    console.error('❌ Campo imagemPrincipal não encontrado!');
+  }
+  
+  // Verificar se há outros campos com o mesmo name
+  const allInputs = document.querySelectorAll('input[name="imagem_principal"]');
+  console.log('📋 Campos encontrados com name="imagem_principal":', allInputs.length);
+  allInputs.forEach((inp, idx) => {
+    console.log(`Campo ${idx + 1}: id="${inp.id}", value="${inp.value}"`);
+  });
 }
 
 // Toggle de remoção de imagens existentes
@@ -2156,9 +2661,3 @@ function updateDatalist(datalistId, options) {
 </script>
  </body>
 </html>
-
-
-
-
-
-

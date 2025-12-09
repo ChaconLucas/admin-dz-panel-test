@@ -95,20 +95,12 @@ try {
             <h3>Produtos</h3>
           </a>
 
-          <a href="#">
-            <span class="material-symbols-sharp">Report</span>
-            <h3>Relatórios</h3>
-          </a>
-
           <a href="settings.php">
             <span class="material-symbols-sharp">Settings</span>
             <h3>Configurações</h3>
           </a>
 
-          <a href="addproducts.php">
-            <span class="material-symbols-sharp">Add</span>
-            <h3>Adicionar Produto</h3>
-          </a>
+
 
           <a href="../../../PHP/logout.php">
             <span class="material-symbols-sharp">Logout</span>

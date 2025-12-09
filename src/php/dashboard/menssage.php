@@ -67,6 +67,8 @@ require_once 'helper-contador.php';
             <h3>Pedidos</h3>
           </a>
 
+
+
           <a href="analytics.php">
             <span class="material-symbols-sharp">Insights</span>
             <h3>Gráficos</h3>
@@ -83,20 +85,14 @@ require_once 'helper-contador.php';
             <h3>Produtos</h3>
           </a>
 
-          <a href="#">
-            <span class="material-symbols-sharp">Report</span>
-            <h3>Relatórios</h3>
-          </a>
+
 
           <a href="settings.php">
             <span class="material-symbols-sharp">Settings</span>
             <h3>Configurações</h3>
           </a>
 
-          <a href="addproducts.php">
-            <span class="material-symbols-sharp">Add</span>
-            <h3>Adicionar Produto</h3>
-          </a>
+
 
           <a href="../../../PHP/logout.php">
             <span class="material-symbols-sharp">Logout</span>

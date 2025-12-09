@@ -69,7 +69,6 @@ class GroqAPI {
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
         
         if ($error) {
             return ['success' => false, 'error' => 'Erro de conexão: ' . $error];

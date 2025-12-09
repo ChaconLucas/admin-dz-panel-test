@@ -386,6 +386,8 @@ $usuarios = mysqli_query($conexao, $sql);
             <h3>Pedidos</h3>
           </a>
 
+
+
           <a href="analytics.php">
             <span class="material-symbols-sharp">Insights</span>
             <h3>Gráficos</h3>
@@ -394,7 +396,7 @@ $usuarios = mysqli_query($conexao, $sql);
           <a href="menssage.php">
             <span class="material-symbols-sharp">Mail</span>
             <h3>Mensagens</h3>
-            <span class="message-count"><?php echo $nao_lidas; ?></span>
+            <span class="message-count"><?= $nao_lidas; ?></span>
           </a>
 
           <a href="products.php">
@@ -402,20 +404,14 @@ $usuarios = mysqli_query($conexao, $sql);
             <h3>Produtos</h3>
           </a>
 
-          <a href="#">
-            <span class="material-symbols-sharp">Report</span>
-            <h3>Relatórios</h3>
-          </a>
+
 
           <a href="settings.php" class="panel">
             <span class="material-symbols-sharp">Settings</span>
             <h3>Configurações</h3>
           </a>
 
-          <a href="addproducts.php">
-            <span class="material-symbols-sharp">Add</span>
-            <h3>Adicionar Produto</h3>
-          </a>
+
 
           <a href="../../../PHP/logout.php">
             <span class="material-symbols-sharp">Logout</span>
