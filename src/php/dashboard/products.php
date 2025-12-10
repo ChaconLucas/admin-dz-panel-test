@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     
     if ($_POST['action'] === 'update_variation_field') {
-        // Debug logging
+        // Log de depuração
         error_log("Update variation field - ID: " . $_POST['variation_id'] . ", Field: " . $_POST['field'] . ", Value: " . $_POST['value']);
         
         $variation_id = (int)$_POST['variation_id'];
@@ -373,8 +373,20 @@ $total_products = mysqli_num_rows($products);
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp" rel="stylesheet">
     <link rel="stylesheet" href="../../css/dashboard.css">
     
+    <!-- Aplicar tema imediatamente -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('darkTheme');
+            if (savedTheme === 'true' || savedTheme === null) {
+                document.body.classList.add('dark-theme-variables');
+            } else {
+                document.body.classList.remove('dark-theme-variables');
+            }
+        })();
+    </script>
+    
     <style>
-        /* Forçar grid layout correto */
+        /* Forçar layout de grade correto */
         .container {
             grid-template-columns: 14rem auto 18rem !important;
         }
@@ -699,8 +711,9 @@ $total_products = mysqli_num_rows($products);
         
         /* Dark mode para widget */
         body.dark-theme-variables .stock-control-widget {
-            background: var(--color-dark);
+            background: var(--color-white);
             border-color: var(--color-light);
+            box-shadow: 0 8px 32px rgba(255, 255, 255, 0.1);
         }
         
         body.dark-theme-variables .stock-widget-header {
@@ -708,15 +721,23 @@ $total_products = mysqli_num_rows($products);
         }
         
         body.dark-theme-variables .stock-widget-header h4 {
-            color: var(--color-white);
+            color: var(--color-dark);
+        }
+        
+        body.dark-theme-variables .stock-widget-icon {
+            color: var(--color-dark-variant);
         }
         
         body.dark-theme-variables .stock-stat-label {
-            color: var(--color-light);
+            color: var(--color-dark-variant);
+        }
+        
+        body.dark-theme-variables .stock-stat-number {
+            color: var(--color-dark);
         }
         
         body.dark-theme-variables .stock-stat.clickable:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--color-light);
         }
         
         /* Mensagem sem produtos */
@@ -808,7 +829,7 @@ $total_products = mysqli_num_rows($products);
             border-color: var(--color-primary);
         }
         
-        /* Estilos de Preço Melhorados */
+        /* Estilos de preço melhorados */
         .price-promo {
             color: var(--color-danger);
             font-weight: 700;
@@ -889,8 +910,8 @@ $total_products = mysqli_num_rows($products);
             }
         }
 
-        /* === THEME TOGGLER STYLES === */
-        .theme-toggler {
+        /* === THEME TOGGLER STYLES (Idêntico ao dashboard.css) === */
+        .right .theme-toggler {
             background: var(--color-light);
             display: flex;
             justify-content: space-between;
@@ -904,12 +925,12 @@ $total_products = mysqli_num_rows($products);
             overflow: hidden;
         }
 
-        .theme-toggler:hover {
+        .right .theme-toggler:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
-        .theme-toggler span {
+        .right .theme-toggler span {
             font-size: 1.2rem;
             width: 50%;
             height: 100%;
@@ -921,7 +942,7 @@ $total_products = mysqli_num_rows($products);
             transform: scale(0.95) rotate(0deg);
         }
 
-        .theme-toggler span.active {
+        .right .theme-toggler span.active {
             background: var(--color-danger);
             color: white;
             transform: scale(1);
@@ -994,7 +1015,7 @@ $total_products = mysqli_num_rows($products);
 
 
 
-        /* Dark mode minimalista */
+        /* Modo escuro minimalista */
         body.dark-theme-variables .action-btn {
             background: rgba(0, 0, 0, 0.3);
             color: #9ca3af;
@@ -1010,7 +1031,7 @@ $total_products = mysqli_num_rows($products);
             color: white;
         }
 
-        /* Product card border in dark mode */
+        /* Bordas de card de produto no modo escuro */
         body.dark-theme-variables .product-item {
             border: 1px solid var(--color-light);
             border-radius: 8px;
@@ -1021,7 +1042,7 @@ $total_products = mysqli_num_rows($products);
             margin-bottom: 0;
         }
 
-        /* === MODERN TOAST NOTIFICATIONS === */
+        /* === NOTIFICAÇÕES TOAST MODERNAS === */
         .toast-container {
             position: fixed;
             top: 20px;
@@ -1122,7 +1143,7 @@ $total_products = mysqli_num_rows($products);
             background: rgba(33, 150, 243, 0.9);
         }
         
-        /* Responsivo */
+        /* Design responsivo */
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr !important;
@@ -1208,7 +1229,7 @@ $total_products = mysqli_num_rows($products);
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
+        <!-- CONTEÚDO PRINCIPAL -->
         <main>
             <div class="products-header">
                 <div class="products-title">
@@ -1219,7 +1240,7 @@ $total_products = mysqli_num_rows($products);
                     </a>
                 </div>
                 
-                <!-- Barra de Filtros -->
+                <!-- Barra de filtros -->
                 <div class="filters-bar">
                     <form method="GET" class="filters-form">
                         <div class="filters-row">
@@ -1273,7 +1294,7 @@ $total_products = mysqli_num_rows($products);
                     </form>
                 </div>
                 
-                <!-- Widget de Controle de Estoque -->
+                <!-- Widget de controle de estoque -->
                 <div class="stock-control-widget">
                     <div class="stock-widget-header">
                         <span class="material-symbols-sharp stock-widget-icon">inventory_2</span>
@@ -1301,7 +1322,7 @@ $total_products = mysqli_num_rows($products);
             <div class="products-list">
                 <?php 
                 $has_products = false;
-                mysqli_data_seek($products, 0); // Reset pointer
+                mysqli_data_seek($products, 0); // Resetar ponteiro
                 while ($product = mysqli_fetch_assoc($products)): 
                     $has_products = true;
                     
@@ -1352,11 +1373,11 @@ $total_products = mysqli_num_rows($products);
                             ?>
                             
                             <?php if ($has_promo): ?>
-                                <!-- Preço original com risco -->
+                                <!-- Preço original riscado -->
                                 <span class="price-original editable" onclick="editField(this, 'preco', <?php echo $product['id']; ?>)" title="Preço original">
                                     R$ <?php echo number_format($product['preco'], 2, ',', '.'); ?>
                                 </span>
-                                <!-- Preço promocional destacado -->
+                                <!-- Preço promocional em destaque -->
                                 <span class="price-promo editable" onclick="editField(this, 'preco_promocional', <?php echo $product['id']; ?>)" title="Preço promocional">
                                     R$ <?php echo number_format($product['preco_promocional'], 2, ',', '.'); ?>
                                 </span>
@@ -1377,7 +1398,7 @@ $total_products = mysqli_num_rows($products);
                             <?php endif; ?>
                         </div>
 
-                        <!-- Estoque com Alertas -->
+                        <!-- Estoque com alertas -->
                         <div class="stock-container">
                             <?php 
                             // Calcular estoque total (produto + variações)
@@ -1415,7 +1436,7 @@ $total_products = mysqli_num_rows($products);
                             </div>
                         </div>
 
-                        <!-- Botões de Ação -->
+                        <!-- Botões de ação -->
                         <div class="product-actions">
                             <button class="action-btn edit-btn" onclick="editProduct(<?php echo $product['id']; ?>)" title="Editar produto">
                                 <span class="material-symbols-sharp">edit</span>
@@ -1520,14 +1541,14 @@ $total_products = mysqli_num_rows($products);
             </div>
         </main>
 
-        <!-- RIGHT PANEL -->
+        <!-- PAINEL DIREITO -->
         <div class="right">
             <div class="top">
                 <button id="menu-btn">
                     <span class="material-symbols-sharp">menu</span>
                 </button>
                 <div class="theme-toggler">
-                    <span class="material-symbols-sharp active">light_mode</span>
+                    <span class="material-symbols-sharp">light_mode</span>
                     <span class="material-symbols-sharp">dark_mode</span>
                 </div>
                 <div class="profile">
@@ -2628,7 +2649,7 @@ $total_products = mysqli_num_rows($products);
             window.location.href = `addproducts.php?edit=${productId}`;
         }
         
-        // === CUSTOM DELETE MODAL ===
+        // === MODAL DE EXCLUSÃO CUSTOMIZADO ===
         window.productToDelete = null;
         
         function deleteProduct(productId, productName) {
@@ -2644,19 +2665,19 @@ $total_products = mysqli_num_rows($products);
             document.getElementById('deleteModalOverlay').classList.add('show');
         }
         
-        // Close modal functions
+        // Funções para fechar modal
         function closeDeleteModal() {
             document.getElementById('deleteModalOverlay').classList.remove('show');
             window.productToDelete = null;
         }
         
-        // Event listeners for modal (consolidated in single DOMContentLoaded)
+        // Ouvintes de eventos para modal (consolidados em um único DOMContentLoaded)
         document.addEventListener('DOMContentLoaded', function() {
-            // Close modal buttons
+            // Botões de fechar modal
             document.getElementById('modalCloseBtn').addEventListener('click', closeDeleteModal);
             document.getElementById('cancelBtn').addEventListener('click', closeDeleteModal);
             
-            // Close on overlay click
+            // Fechar ao clicar na sobreposição
             document.getElementById('deleteModalOverlay').addEventListener('click', function(e) {
                 if (e.target === this) closeDeleteModal();
             });
@@ -2876,48 +2897,9 @@ $total_products = mysqli_num_rows($products);
             }
         }
 
-        // === DARK MODE TOGGLE ===
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggler = document.querySelector('.theme-toggler');
-            const lightIcon = themeToggler.querySelector('span:first-child');
-            const darkIcon = themeToggler.querySelector('span:last-child');
-            const body = document.body;
-            
-            // Carregar preferência salva
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            
-            function setTheme(theme) {
-                if (theme === 'light') {
-                    body.classList.remove('dark-theme-variables');
-                    lightIcon.classList.add('active');
-                    darkIcon.classList.remove('active');
-                    localStorage.setItem('theme', 'light');
-                } else {
-                    body.classList.add('dark-theme-variables');
-                    lightIcon.classList.remove('active');
-                    darkIcon.classList.add('active');
-                    localStorage.setItem('theme', 'dark');
-                }
-            }
-            
-            // Aplicar tema inicial
-            setTheme(savedTheme);
-            
-            // Toggle ao clicar
-            themeToggler.addEventListener('click', function() {
-                const currentTheme = localStorage.getItem('theme') || 'dark';
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                setTheme(newTheme);
-                
-                // Animação suave
-                themeToggler.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    themeToggler.style.transform = 'scale(1)';
-                }, 150);
-            });
-        });
+        // O dashboard.js já cuida do tema - sem duplicação
         
-        // === MODERN TOAST NOTIFICATIONS ===
+        // === NOTIFICAÇÕES TOAST MODERNAS ===
         function createToast(message, type = 'info', duration = 4000) {
             const container = document.getElementById('toastContainer') || createToastContainer();
             
@@ -2939,7 +2921,7 @@ $total_products = mysqli_num_rows($products);
                 </button>
             `;
             
-            // Close button functionality
+            // Funcionalidade do botão fechar
             toast.querySelector('.toast-close').addEventListener('click', () => {
                 hideToast(toast);
             });
@@ -2979,7 +2961,7 @@ $total_products = mysqli_num_rows($products);
             createToast(message, 'info');
         };
         
-        // Utility functions for different toast types
+        // Funções utilitárias para diferentes tipos de toast
         window.showSuccess = function(message) {
             createToast(message, 'success');
         };
@@ -3033,7 +3015,7 @@ $total_products = mysqli_num_rows($products);
     <div id="toastContainer" class="toast-container"></div>
     
     <style>
-        /* === CUSTOM MODAL STYLES === */
+        /* === ESTILOS DO MODAL CUSTOMIZADO === */
         .custom-modal-overlay {
             position: fixed;
             top: 0;
