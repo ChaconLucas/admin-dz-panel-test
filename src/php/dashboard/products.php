@@ -8,6 +8,43 @@ if (!isset($_SESSION['usuario_logado'])) {
 require_once '../../../PHP/conexao.php';
 require_once 'helper-contador.php';
 
+// Função para sincronizar estoque do produto pai com base nas variações
+function sincronizarEstoquePai($conexao, $produto_id = null) {
+    if ($produto_id) {
+        // Sincronizar apenas um produto específico
+        $produtos_query = "SELECT id FROM produtos WHERE id = ?";
+        $stmt = mysqli_prepare($conexao, $produtos_query);
+        mysqli_stmt_bind_param($stmt, "i", $produto_id);
+    } else {
+        // Sincronizar todos os produtos que têm variações
+        $produtos_query = "SELECT DISTINCT produto_id as id FROM produto_variacoes";
+        $stmt = mysqli_prepare($conexao, $produtos_query);
+    }
+    
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    while ($produto = mysqli_fetch_assoc($result)) {
+        $id = $produto['id'];
+        
+        // Calcular estoque total das variações
+        $total_query = "SELECT SUM(estoque) as total_estoque FROM produto_variacoes WHERE produto_id = ?";
+        $total_stmt = mysqli_prepare($conexao, $total_query);
+        mysqli_stmt_bind_param($total_stmt, "i", $id);
+        mysqli_stmt_execute($total_stmt);
+        $total_result = mysqli_stmt_get_result($total_stmt);
+        $total_data = mysqli_fetch_assoc($total_result);
+        
+        $estoque_total = $total_data['total_estoque'] ?: 0;
+        
+        // Atualizar produto pai
+        $update_query = "UPDATE produtos SET estoque = ? WHERE id = ?";
+        $update_stmt = mysqli_prepare($conexao, $update_query);
+        mysqli_stmt_bind_param($update_stmt, "ii", $estoque_total, $id);
+        mysqli_stmt_execute($update_stmt);
+    }
+}
+
 // Restauração manual de imagens removida
 
 // Garantir que $nao_lidas existe
@@ -35,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         $allowed_fields = ['preco', 'preco_promocional', 'estoque'];
         if (!in_array($field, $allowed_fields)) {
-            echo json_encode(['success' => false]);
+            echo json_encode(['success' => false, 'message' => 'Campo não permitido']);
             exit;
         }
         
@@ -126,6 +163,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
         
+        // Se atualizou o estoque de uma variação, atualizar estoque total do produto pai
+        if ($success && $field === 'estoque') {
+            // Buscar o produto_id da variação
+            $product_query = "SELECT produto_id FROM produto_variacoes WHERE id = ?";
+            $product_stmt = mysqli_prepare($conexao, $product_query);
+            mysqli_stmt_bind_param($product_stmt, "i", $variation_id);
+            mysqli_stmt_execute($product_stmt);
+            $product_result = mysqli_stmt_get_result($product_stmt);
+            $product_data = mysqli_fetch_assoc($product_result);
+            
+            if ($product_data) {
+                $produto_id = $product_data['produto_id'];
+                
+                // Calcular o estoque total de todas as variações do produto
+                $total_query = "SELECT SUM(estoque) as total_estoque FROM produto_variacoes WHERE produto_id = ?";
+                $total_stmt = mysqli_prepare($conexao, $total_query);
+                mysqli_stmt_bind_param($total_stmt, "i", $produto_id);
+                mysqli_stmt_execute($total_stmt);
+                $total_result = mysqli_stmt_get_result($total_stmt);
+                $total_data = mysqli_fetch_assoc($total_result);
+                
+                $estoque_total = $total_data['total_estoque'] ?: 0;
+                
+                // Atualizar o estoque do produto pai
+                $update_parent_query = "UPDATE produtos SET estoque = ? WHERE id = ?";
+                $update_parent_stmt = mysqli_prepare($conexao, $update_parent_query);
+                mysqli_stmt_bind_param($update_parent_stmt, "ii", $estoque_total, $produto_id);
+                mysqli_stmt_execute($update_parent_stmt);
+            }
+        }
+        
         $response = ['success' => true, 'new_value' => $value];
         
         // Se o preço foi limpo (NULL), buscar preço do produto pai
@@ -147,21 +215,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($_POST['action'] === 'delete_product') {
+        header('Content-Type: application/json');
+        
+        // Debug temporário
+        error_log('DELETE PHP: Received POST data: ' . print_r($_POST, true));
+        
         $id = (int)$_POST['id'];
         
-        // Excluir variações primeiro (se existirem)
-        $sql = "DELETE FROM produto_variacoes WHERE produto_id = ?";
-        $stmt = mysqli_prepare($conexao, $sql);
-        mysqli_stmt_bind_param($stmt, "i", $id);
-        mysqli_stmt_execute($stmt);
+        error_log('DELETE PHP: Original id: ' . var_export($_POST['id'], true) . ', Converted: ' . $id);
         
-        // Excluir produto
-        $sql = "DELETE FROM produtos WHERE id = ?";
-        $stmt = mysqli_prepare($conexao, $sql);
-        mysqli_stmt_bind_param($stmt, "i", $id);
-        $success = mysqli_stmt_execute($stmt);
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'error' => "ID inválido - Recebido: '" . $_POST['id'] . "', Convertido: $id"]);
+            exit;
+        }
         
-        echo json_encode(['success' => $success]);
+        try {
+            // Excluir variações primeiro (se existirem)
+            $sql = "DELETE FROM produto_variacoes WHERE produto_id = ?";
+            $stmt = mysqli_prepare($conexao, $sql);
+            mysqli_stmt_bind_param($stmt, "i", $id);
+            mysqli_stmt_execute($stmt);
+            
+            // Excluir produto
+            $sql = "DELETE FROM produtos WHERE id = ?";
+            $stmt = mysqli_prepare($conexao, $sql);
+            mysqli_stmt_bind_param($stmt, "i", $id);
+            $success = mysqli_stmt_execute($stmt);
+            
+            if ($success && mysqli_affected_rows($conexao) > 0) {
+                echo json_encode(['success' => true, 'message' => 'Produto excluído com sucesso']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Produto não encontrado ou não foi possível excluir']);
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro interno: ' . $e->getMessage()]);
+        }
+        
         exit;
     }
 }
@@ -172,17 +262,39 @@ $categoria = $_GET['categoria'] ?? '';
 $status = $_GET['status'] ?? '';
 $estoque = $_GET['estoque'] ?? '';
 
+// Sincronizar estoques de produtos com variações
+sincronizarEstoquePai($conexao);
+
+// Estatísticas de estoque para o widget
+$stats_disponivel = mysqli_fetch_assoc(mysqli_query($conexao, "SELECT COUNT(*) as total FROM produtos WHERE estoque > 10"))['total'] ?? 0;
+$stats_baixo = mysqli_fetch_assoc(mysqli_query($conexao, "SELECT COUNT(*) as total FROM produtos WHERE estoque > 0 AND estoque <= 10"))['total'] ?? 0;
+$stats_esgotado = mysqli_fetch_assoc(mysqli_query($conexao, "SELECT COUNT(*) as total FROM produtos WHERE estoque = 0"))['total'] ?? 0;
+
+// Contar produtos com baixo estoque para o alerta (≤ 10)
+$baixo_estoque_query = "SELECT COUNT(*) as total, GROUP_CONCAT(nome SEPARATOR ', ') as nomes 
+                        FROM produtos 
+                        WHERE estoque > 0 AND estoque <= 10 
+                        ORDER BY estoque ASC 
+                        LIMIT 5";
+$baixo_estoque_result = mysqli_query($conexao, $baixo_estoque_query);
+$baixo_estoque_data = mysqli_fetch_assoc($baixo_estoque_result);
+$produtos_baixo_estoque = $baixo_estoque_data['total'] ?? 0;
+$nomes_baixo_estoque = $baixo_estoque_data['nomes'] ?? '';
+
 $sql = "SELECT p.*, c.nome as categoria_nome FROM produtos p LEFT JOIN categorias c ON p.categoria_id = c.id";
 $conditions = [];
 $params = [];
 $types = '';
 
-// Filtro de busca (nome ou SKU)
+// Filtro de busca (nome, SKU, categoria ou subcategoria)
 if ($search) {
-    $conditions[] = "(p.nome LIKE ? OR p.sku LIKE ?)";
+    $conditions[] = "(p.nome LIKE ? OR p.sku LIKE ? OR p.categoria LIKE ? OR p.subcategoria LIKE ? OR c.nome LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
-    $types .= "ss";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+    $types .= "sssss";
 }
 
 // Filtro de categoria
@@ -201,14 +313,14 @@ if ($status) {
     }
 }
 
-// Filtro de estoque
+// Filtro de estoque (apenas produto pai)
 if ($estoque) {
-    if ($estoque === 'esgotado') {
-        $conditions[] = "(p.estoque = 0 OR p.estoque_atual = 0)";
+    if ($estoque === 'disponivel') {
+        $conditions[] = "p.estoque > 10";
     } elseif ($estoque === 'baixo') {
-        $conditions[] = "(p.estoque <= p.estoque_minimo AND p.estoque > 0)";
-    } elseif ($estoque === 'disponivel') {
-        $conditions[] = "(p.estoque > 0 OR p.estoque_atual > 0)";
+        $conditions[] = "(p.estoque > 0 AND p.estoque <= 10)";
+    } elseif ($estoque === 'esgotado') {
+        $conditions[] = "p.estoque = 0";
     }
 }
 
@@ -217,13 +329,28 @@ if (!empty($conditions)) {
 }
 $sql .= " ORDER BY p.id DESC";
 
-if (!empty($params)) {
-    $stmt = mysqli_prepare($conexao, $sql);
-    mysqli_stmt_bind_param($stmt, $types, ...$params);
-    mysqli_stmt_execute($stmt);
-    $products = mysqli_stmt_get_result($stmt);
-} else {
-    $products = mysqli_query($conexao, $sql);
+// Debug temporário - mostrar na página
+if (isset($_GET['debug'])) {
+    echo "<div style='background: #f0f0f0; padding: 10px; margin: 10px; border: 1px solid #ccc;'>";
+    echo "<h3>DEBUG FILTROS</h3>";
+    echo "<p><strong>Parâmetros GET:</strong> " . htmlspecialchars(print_r($_GET, true)) . "</p>";
+    echo "<p><strong>Filtro estoque:</strong> '$estoque'</p>";
+    echo "<p><strong>Condições:</strong> " . htmlspecialchars(print_r($conditions, true)) . "</p>";
+    echo "<p><strong>SQL final:</strong> " . htmlspecialchars($sql) . "</p>";
+    echo "</div>";
+}
+
+// Forçar execução sem prepared statement para debug
+$products = mysqli_query($conexao, $sql);
+
+if (!$products) {
+    echo "<div style='color: red; background: #ffe6e6; padding: 10px;'>Erro SQL: " . mysqli_error($conexao) . "</div>";
+}
+
+if (isset($_GET['debug'])) {
+    echo "<div style='background: #e6ffe6; padding: 10px; margin: 10px; border: 1px solid #ccc;'>";
+    echo "<p><strong>Número de resultados:</strong> " . mysqli_num_rows($products) . "</p>";
+    echo "</div>";
 }
 
 // Buscar categorias para filtros
@@ -323,7 +450,7 @@ $total_products = mysqli_num_rows($products);
         
         .filters-row {
             display: grid;
-            grid-template-columns: 1fr 200px 150px 150px auto;
+            grid-template-columns: 2fr 180px 140px 140px auto;
             gap: 1rem;
             align-items: end;
         }
@@ -366,6 +493,14 @@ $total_products = mysqli_num_rows($products);
             width: 100%;
         }
         
+        .search-help {
+            display: block;
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+        
         .category-select,
         .status-select,
         .stock-select {
@@ -375,7 +510,8 @@ $total_products = mysqli_num_rows($products);
         .filter-buttons {
             display: flex;
             gap: 0.5rem;
-            align-items: center;
+            align-items: end;
+            padding-bottom: 0.8rem;
         }
         
         .btn-filter {
@@ -412,6 +548,175 @@ $total_products = mysqli_num_rows($products);
         
         .btn-clear:hover {
             color: #d32f2f;
+        }
+        
+        /* Alerta de baixo estoque */
+        .low-stock-alert {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+            border-left: 4px solid #e65100;
+        }
+        
+        .low-stock-alert .material-symbols-sharp {
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+        
+        .low-stock-content h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .low-stock-content p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.3;
+        }
+        
+        .low-stock-link {
+            color: white;
+            text-decoration: underline;
+            margin-left: 0.5rem;
+        }
+        
+        .low-stock-link:hover {
+            color: #fff3e0;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Dark mode */
+        body.dark-theme-variables .low-stock-alert {
+            background: linear-gradient(135deg, #f57c00, #e65100);
+        }
+        
+        /* Widget de Controle de Estoque - Canto Direito */
+        .stock-control-widget {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            padding: 1.2rem;
+            width: 200px;
+            z-index: 1000;
+            border: 1px solid #e5e5e5;
+        }
+        
+        .stock-widget-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .stock-widget-header h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .stock-widget-icon {
+            font-size: 18px !important;
+            color: #666;
+        }
+        
+        .stock-stat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            font-size: 13px;
+        }
+        
+        .stock-stat-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #555;
+        }
+        
+        .stock-stat-number {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .stock-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .dot-available { background: #00d4aa; }
+        .dot-low { background: #ff6b35; }
+        .dot-out { background: #e91e63; }
+        
+        .stock-stat.clickable {
+            cursor: pointer;
+            padding: 0.5rem;
+            margin: 0 -0.5rem;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+        
+        .stock-stat.clickable:hover {
+            background: #f8f9fa;
+        }
+        
+        /* Fechar alerta */
+        .alert-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            opacity: 0.8;
+            font-size: 18px;
+            padding: 4px;
+            margin-left: auto;
+        }
+        
+        .alert-close:hover {
+            opacity: 1;
+        }
+        
+        /* Dark mode para widget */
+        body.dark-theme-variables .stock-control-widget {
+            background: var(--color-dark);
+            border-color: var(--color-light);
+        }
+        
+        body.dark-theme-variables .stock-widget-header {
+            border-color: var(--color-light);
+        }
+        
+        body.dark-theme-variables .stock-widget-header h4 {
+            color: var(--color-white);
+        }
+        
+        body.dark-theme-variables .stock-stat-label {
+            color: var(--color-light);
+        }
+        
+        body.dark-theme-variables .stock-stat.clickable:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
         
         /* Mensagem sem produtos */
@@ -921,7 +1226,7 @@ $total_products = mysqli_num_rows($products);
                             <div class="filter-group">
                                 <label>Buscar</label>
                                 <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
-                                       placeholder="Nome ou SKU..." class="search-input">
+                                       placeholder="Nome, SKU, categoria ou subcategoria..." class="search-input">
                             </div>
                             
                             <div class="filter-group">
@@ -967,6 +1272,30 @@ $total_products = mysqli_num_rows($products);
                         </div>
                     </form>
                 </div>
+                
+                <!-- Widget de Controle de Estoque -->
+                <div class="stock-control-widget">
+                    <div class="stock-widget-header">
+                        <span class="material-symbols-sharp stock-widget-icon">inventory_2</span>
+                        <h4>Controle de Estoque</h4>
+                    </div>
+                    
+                    <div class="stock-stat clickable" onclick="window.location.href='?estoque=baixo';" title="Ver produtos com baixo estoque" style="color: #ff6b35;">
+                        <div class="stock-stat-label">
+                            <div class="stock-dot dot-low"></div>
+                            <span>Baixo Estoque</span>
+                        </div>
+                        <span class="stock-stat-number" style="color: #ff6b35;"><?php echo $stats_baixo; ?></span>
+                    </div>
+                    
+                    <div class="stock-stat clickable" onclick="window.location.href='?estoque=esgotado';" title="Ver produtos esgotados" style="color: #e91e63;">
+                        <div class="stock-stat-label">
+                            <div class="stock-dot dot-out"></div>
+                            <span>Esgotado</span>
+                        </div>
+                        <span class="stock-stat-number" style="color: #e91e63;"><?php echo $stats_esgotado; ?></span>
+                    </div>
+                </div>
             </div>
 
             <div class="products-list">
@@ -975,6 +1304,15 @@ $total_products = mysqli_num_rows($products);
                 mysqli_data_seek($products, 0); // Reset pointer
                 while ($product = mysqli_fetch_assoc($products)): 
                     $has_products = true;
+                    
+                    // Debug temporário - mostrar dados do produto
+                    if (isset($_GET['debug'])) {
+                        echo "<div style='background: #fff3cd; padding: 5px; margin: 5px; border: 1px solid #856404;'>";
+                        echo "<strong>Produto ID {$product['id']}:</strong> ";
+                        echo "Nome: {$product['nome']}, ";
+                        echo "Estoque DB: {$product['estoque']}";
+                        echo "</div>";
+                    }
                     
                     // Buscar variações do produto
                     $variations_query = "SELECT * FROM produto_variacoes WHERE produto_id = ? ORDER BY tipo, valor";
@@ -1060,7 +1398,7 @@ $total_products = mysqli_num_rows($products);
                                 $stock_status = 'out';
                                 $stock_color = '#e91e63';
                                 $stock_icon = 'cancel';
-                            } elseif ($stock_total <= 5) {
+                            } elseif ($stock_total <= 10) {
                                 $stock_status = 'low';
                                 $stock_color = '#ff6b35';
                                 $stock_icon = 'warning';
@@ -2234,7 +2572,12 @@ $total_products = mysqli_num_rows($products);
             input.focus();
             input.select();
             
+            let isSaving = false;
+            
             function saveValue() {
+                if (isSaving) return;
+                isSaving = true;
+                
                 let newValue = parseFloat(input.value) || 0;
                 
                 // Validações específicas
@@ -2255,12 +2598,13 @@ $total_products = mysqli_num_rows($products);
                         location.reload();
                     } else {
                         showError('Erro ao atualizar. Tente novamente.');
+                        isSaving = false;
                         location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Erro:', error);
                     showError('Erro de conexão. Verifique sua internet.');
+                    isSaving = false;
                     location.reload();
                 });
             }
@@ -2268,6 +2612,8 @@ $total_products = mysqli_num_rows($products);
             input.addEventListener('blur', saveValue);
             input.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
+                    e.preventDefault();
+                    input.removeEventListener('blur', saveValue); // Remove blur para evitar duplo disparo
                     saveValue();
                 } else if (e.key === 'Escape') {
                     location.reload();
@@ -2283,10 +2629,17 @@ $total_products = mysqli_num_rows($products);
         }
         
         // === CUSTOM DELETE MODAL ===
-        let productToDelete = null;
+        window.productToDelete = null;
         
         function deleteProduct(productId, productName) {
-            productToDelete = productId;
+            console.log('DELETE: Setting productId to:', productId, 'Type:', typeof productId);
+            window.productToDelete = parseInt(productId);
+            console.log('DELETE: productToDelete set to:', window.productToDelete);
+            
+            // Também armazenar no botão como backup
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            confirmBtn.setAttribute('data-product-id', productId);
+            
             document.getElementById('productName').textContent = productName;
             document.getElementById('deleteModalOverlay').classList.add('show');
         }
@@ -2294,7 +2647,7 @@ $total_products = mysqli_num_rows($products);
         // Close modal functions
         function closeDeleteModal() {
             document.getElementById('deleteModalOverlay').classList.remove('show');
-            productToDelete = null;
+            window.productToDelete = null;
         }
         
         // Event listeners for modal (consolidated in single DOMContentLoaded)
@@ -2317,7 +2670,16 @@ $total_products = mysqli_num_rows($products);
             
             // Delete confirmation button
             document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-                if (productToDelete) {
+                console.log('CONFIRM: window.productToDelete:', window.productToDelete);
+                
+                // Backup: pegar do atributo se a variável for perdida
+                let productId = window.productToDelete;
+                if (!productId || productId === null) {
+                    productId = parseInt(this.getAttribute('data-product-id'));
+                    console.log('CONFIRM: Using backup ID from attribute:', productId);
+                }
+                
+                if (productId && productId > 0) {
                     closeDeleteModal();
                     
                     // Add loading state to button
@@ -2326,18 +2688,40 @@ $total_products = mysqli_num_rows($products);
                     btn.innerHTML = '<span class="loading-spinner"></span>Excluindo...';
                     btn.disabled = true;
                     
+                    const params = new URLSearchParams();
+                    params.append('action', 'delete_product');
+                    params.append('id', productId);
+                    
+                    console.log('SEND: Sending productId:', productId);
+                    
                     fetch('products.php', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: `action=delete_product&id=${productToDelete}`
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: params
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        console.log('Response status:', response.status);
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log('Response data:', data);
                         if (data.success) {
-                            showSuccess('Produto excluído com sucesso!');
-                            setTimeout(() => location.reload(), 1500);
+                            showSuccess(data.message || 'Produto excluído com sucesso!');
+                            // Remover o produto da tela imediatamente
+                            const productRow = document.querySelector(`[data-product-id="${productId}"]`);
+                            if (productRow) {
+                                productRow.style.transition = 'opacity 0.3s ease';
+                                productRow.style.opacity = '0';
+                                setTimeout(() => {
+                                    productRow.remove();
+                                }, 300);
+                            }
+                            // Recarregar mais rápido
+                            setTimeout(() => location.reload(), 800);
                         } else {
-                            showError('Erro ao excluir produto. Tente novamente.');
+                            showError(data.error || 'Erro ao excluir produto. Tente novamente.');
                         }
                     })
                     .catch(error => {

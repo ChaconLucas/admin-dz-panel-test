@@ -72,6 +72,7 @@ if (mysqli_num_rows($table_exists) == 0) {
     // Verificar e adicionar colunas se não existirem
     $columns_to_add = [
         'categoria' => 'ALTER TABLE produtos ADD COLUMN categoria VARCHAR(100)',
+        'categoria_id' => 'ALTER TABLE produtos ADD COLUMN categoria_id INT NULL',
         'subcategoria' => 'ALTER TABLE produtos ADD COLUMN subcategoria VARCHAR(100)',
         'marca' => 'ALTER TABLE produtos ADD COLUMN marca VARCHAR(100)',
         'video_url' => 'ALTER TABLE produtos ADD COLUMN video_url VARCHAR(500)',
@@ -126,12 +127,19 @@ $produto = null;
 $variacoes = [];
 
 if ($editing || $adding_variation) {
-    $sql = "SELECT * FROM produtos WHERE id = ?";
+    $sql = "SELECT p.*, c.nome as categoria_nome FROM produtos p 
+            LEFT JOIN categorias c ON p.categoria_id = c.id 
+            WHERE p.id = ?";
     $stmt = mysqli_prepare($conexao, $sql);
     mysqli_stmt_bind_param($stmt, "i", $produto_id);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
     $produto = mysqli_fetch_assoc($result);
+    
+    // Se há categoria_nome do JOIN, usar ela, senão usar o campo categoria (compatibilidade)
+    if ($produto && isset($produto['categoria_nome'])) {
+        $produto['categoria'] = $produto['categoria_nome'];
+    }
     
     if (!$produto) {
         header('Location: products.php');
@@ -207,7 +215,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $preco_promocional = !empty($_POST['preco_promocional']) ? floatval($_POST['preco_promocional']) : null;
     $categoria = trim($_POST['categoria']);
     
-    // Salvar categoria se não existir
+    // Salvar categoria se não existir e obter ID
+    $categoria_id = null;
     if (!empty($categoria)) {
         $check_cat = "SELECT id FROM categorias WHERE nome = ?";
         $stmt_check = mysqli_prepare($conexao, $check_cat);
@@ -216,10 +225,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $result_check = mysqli_stmt_get_result($stmt_check);
         
         if (mysqli_num_rows($result_check) == 0) {
+            // Categoria não existe, inserir nova
             $insert_cat = "INSERT INTO categorias (nome) VALUES (?)";
             $stmt_cat = mysqli_prepare($conexao, $insert_cat);
             mysqli_stmt_bind_param($stmt_cat, "s", $categoria);
             mysqli_stmt_execute($stmt_cat);
+            $categoria_id = mysqli_insert_id($conexao);
+        } else {
+            // Categoria existe, pegar o ID
+            $cat_data = mysqli_fetch_assoc($result_check);
+            $categoria_id = $cat_data['id'];
         }
     }
     $subcategoria = trim($_POST['subcategoria'] ?? '');
@@ -241,6 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // Validações
     if (empty($nome)) $errors[] = "Nome é obrigatório";
+    if (empty($categoria)) $errors[] = "Categoria é obrigatória";
     if ($preco <= 0) $errors[] = "Preço deve ser maior que zero";
     if ($estoque < 0) $errors[] = "Estoque não pode ser negativo";
     if ($preco_promocional && $preco_promocional >= $preco) {
@@ -249,9 +265,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // Verificar SKU único
     if ($sku) {
-        $check_sku = "SELECT id FROM produtos WHERE sku = ? AND id != ?";
-        $stmt_sku = mysqli_prepare($conexao, $check_sku);
-        mysqli_stmt_bind_param($stmt_sku, "si", $sku, $produto_id);
+        if ($editing) {
+            $check_sku = "SELECT id FROM produtos WHERE sku = ? AND id != ?";
+            $stmt_sku = mysqli_prepare($conexao, $check_sku);
+            mysqli_stmt_bind_param($stmt_sku, "si", $sku, $produto_id);
+        } else {
+            $check_sku = "SELECT id FROM produtos WHERE sku = ?";
+            $stmt_sku = mysqli_prepare($conexao, $check_sku);
+            mysqli_stmt_bind_param($stmt_sku, "s", $sku);
+        }
         mysqli_stmt_execute($stmt_sku);
         if (mysqli_stmt_get_result($stmt_sku)->num_rows > 0) {
             $errors[] = "SKU já existe";
@@ -361,6 +383,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'preco' => $preco,
             'preco_promocional' => $preco_promocional,
             'categoria' => $categoria,
+            'categoria_id' => $categoria_id,
             'subcategoria' => $subcategoria,
             'marca' => $marca,
             'sku' => $sku,
@@ -397,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Determinar tipo do parâmetro
                 if (in_array($field, ['preco', 'preco_promocional', 'peso'])) {
                     $types .= 'd';
-                } elseif (in_array($field, ['estoque', 'destaque'])) {
+                } elseif (in_array($field, ['estoque', 'destaque', 'categoria_id'])) {
                     $types .= 'i';
                 } else {
                     $types .= 's';
@@ -542,6 +565,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             mysqli_stmt_execute($stmt_var);
                         }
                     }
+                }
+                
+                // Após inserir/atualizar variações, recalcular estoque total do produto pai
+                if (isset($_POST['variations']) && is_array($_POST['variations'])) {
+                    $total_query = "SELECT SUM(estoque) as total_estoque FROM produto_variacoes WHERE produto_id = ?";
+                    $total_stmt = mysqli_prepare($conexao, $total_query);
+                    mysqli_stmt_bind_param($total_stmt, "i", $produto_id);
+                    mysqli_stmt_execute($total_stmt);
+                    $total_result = mysqli_stmt_get_result($total_stmt);
+                    $total_data = mysqli_fetch_assoc($total_result);
+                    
+                    $estoque_total = $total_data['total_estoque'] ?: 0;
+                    
+                    // Atualizar o estoque do produto pai com o total das variações
+                    $update_parent_query = "UPDATE produtos SET estoque = ? WHERE id = ?";
+                    $update_parent_stmt = mysqli_prepare($conexao, $update_parent_query);
+                    mysqli_stmt_bind_param($update_parent_stmt, "ii", $estoque_total, $produto_id);
+                    mysqli_stmt_execute($update_parent_stmt);
                 }
             }
             
@@ -923,27 +964,27 @@ if (mysqli_num_rows($categorias_result) == 0) {
       }
 
       .variation-upload-area {
-        border: 2px dashed #d1d5db;
+        border: 2px dashed rgba(255, 20, 147, 0.4);
         border-radius: 12px;
         padding: 20px;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        background: #f9fafb;
+        background: rgba(255, 20, 147, 0.02);
         position: relative;
         overflow: hidden;
       }
 
       .variation-upload-area:hover {
-        border-color: #6366f1;
-        background: #f0f0ff;
+        border-color: #ff1493;
+        background: rgba(255, 20, 147, 0.08);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+        box-shadow: 0 4px 12px rgba(255, 20, 147, 0.15);
       }
 
       .variation-upload-area.has-image {
-        border: 2px solid #10b981;
-        background: #ecfdf5;
+        border: 2px solid #ff1493;
+        background: rgba(255, 20, 147, 0.05);
         padding: 0;
       }
 
@@ -958,7 +999,7 @@ if (mysqli_num_rows($categorias_result) == 0) {
       }
 
       .variation-upload-area:hover .upload-icon .material-symbols-sharp {
-        color: #6366f1;
+        color: #ff1493;
         transform: scale(1.1);
       }
 
@@ -1028,7 +1069,7 @@ if (mysqli_num_rows($categorias_result) == 0) {
         margin-top: 12px;
         border-radius: 10px;
         overflow: hidden;
-        border: 2px solid #10b981;
+        border: 2px solid #ff1493;
       }
 
       .variation-image-preview .variation-preview-img {
@@ -1039,8 +1080,8 @@ if (mysqli_num_rows($categorias_result) == 0) {
       .new-image-preview {
         margin-top: 12px;
         padding: 12px;
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
+        background: rgba(255, 20, 147, 0.05);
+        border: 1px solid rgba(255, 20, 147, 0.3);
         border-radius: 8px;
       }
 
@@ -1056,7 +1097,7 @@ if (mysqli_num_rows($categorias_result) == 0) {
         gap: 6px;
         font-size: 13px;
         font-weight: 500;
-        color: #059669;
+        color: #ff1493;
       }
 
       .preview-label .material-symbols-sharp {
