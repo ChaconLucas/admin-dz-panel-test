@@ -8,17 +8,18 @@ function carregarConfig() {
         $lines = file(__DIR__ . '/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
             if (strpos($line, '#') === 0) continue;
+            if (strpos($line, '=') === false) continue;
             list($key, $value) = explode('=', $line, 2);
             $config[trim($key)] = trim($value);
         }
     }
     
-    // Fallback para valores padrão (apenas para desenvolvimento local)
-    if (empty($config['GROQ_API_KEY'])) {
-        $config['GROQ_API_KEY'] = 'your_groq_api_key_here'; // Substitua pela sua chave real
+    // Fallback para valores padrão (apenas se não existir no .env)
+    if (!isset($config['GROQ_API_KEY']) || $config['GROQ_API_KEY'] === 'your_groq_api_key_here') {
+        $config['GROQ_API_KEY'] = 'your_groq_api_key_here'; // Placeholder
     }
     
-    if (empty($config['DB_HOST'])) {
+    if (!isset($config['DB_HOST'])) {
         $config['DB_HOST'] = 'localhost';
         $config['DB_NAME'] = 'teste_dz';
         $config['DB_USER'] = 'root';
