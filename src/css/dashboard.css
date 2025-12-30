@@ -1159,8 +1159,74 @@ main .recent-orders a {
   gap: 2px;
 }
 
-/* Botões Simples */
-.btn-remove,
+/* Botão Primary */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--border-radius-2);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-variant);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 0, 212, 0.3);
+}
+
+/* Campos de senha com ícone de mostrar/esconder */
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-container input {
+  padding-right: 3rem !important;
+  flex: 1;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: var(--color-info-dark);
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  font-size: 1.2rem;
+}
+
+.password-toggle:hover {
+  background: var(--color-light);
+  color: var(--color-primary);
+}
+
+.btn-remove {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  background: #dc3545;
+  color: white;
+}
+
 .btn-star {
   width: 20px;
   height: 20px;
@@ -1172,23 +1238,9 @@ main .recent-orders a {
   cursor: pointer;
   font-size: 12px;
   font-weight: bold;
-}
-
-.btn-remove {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-star {
   background: #f8f9fa;
   color: #666;
   border: 1px solid #ddd;
-}
-
-.btn-star.active {
-  background: #ffc107;
-  color: #000;
-  border-color: #ffc107;
 }
 
 .image-info {
