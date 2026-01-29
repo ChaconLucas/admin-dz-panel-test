@@ -8,6 +8,9 @@ if (!isset($_SESSION['usuario_logado'])) {
 require_once '../../../PHP/conexao.php';
 require_once 'helper-contador.php';
 
+// Incluir sistema de logs automático
+require_once '../auto_log.php';
+
 // Função para sincronizar estoque do produto pai com base nas variações
 function sincronizarEstoquePai($conexao, $produto_id = null) {
     if ($produto_id) {
@@ -70,6 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $field = $_POST['field'];
         $value = $_POST['value'];
         
+        // BUSCAR DADOS ANTES DA ALTERAÇÃO (CRUCIAL!)
+        $dados_antes = buscar_dados_atuais($conexao, 'produtos', $id, ['nome', 'preco', 'preco_promocional', 'estoque']);
+        $produto_nome = $dados_antes['nome'] ?? "ID: $id";
+        $valor_antigo = $dados_antes[$field] ?? 0;
+        
         $allowed_fields = ['preco', 'preco_promocional', 'estoque'];
         if (!in_array($field, $allowed_fields)) {
             echo json_encode(['success' => false, 'message' => 'Campo não permitido']);
@@ -104,6 +112,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         
         $success = mysqli_stmt_execute($stmt);
+        
+        // AGORA SIM: Gerar log com valores corretos (antes vs depois)
+        if ($success) {
+            // Registrar log com comparação correta
+            if ($field === 'estoque') {
+                registrar_log_alteracao($conexao, 'estoque', $produto_nome, $field, $valor_antigo, $value);
+            } elseif ($field === 'preco') {
+                registrar_log_alteracao($conexao, 'preco', $produto_nome, $field, $valor_antigo, $value);
+            } elseif ($field === 'preco_promocional') {
+                registrar_log_alteracao($conexao, 'preco_promocional', $produto_nome, $field, $valor_antigo, $value);
+            }
+        }
+        
         echo json_encode(['success' => $success]);
         exit;
     }

@@ -47,8 +47,12 @@
   list-style: none;
   box-sizing: border-box;
   /* Transições suaves para mudança de tema */
-  transition: background-color 0.3s ease, color 0.3s ease,
-    border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    background 0.3s ease;
 }
 
 html {
@@ -64,7 +68,8 @@ body {
   user-select: none;
   overflow-x: hidden;
   color: var(--color-dark);
-  transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -241,25 +246,25 @@ aside .sidebar a:hover span {
   transform: scale(1.05);
 }
 
-/* Estado ativo da sidebar - Rosa escuro e claro encaixados */
+/* Estado ativo da sidebar - Verde escuro e claro encaixados */
 aside .sidebar a.active {
-  background: rgba(255, 20, 147, 0.1);
-  color: #ff1493;
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
   margin-left: 1.5rem;
   margin-right: 0.5rem;
   position: relative;
-  border-left: 5px solid #ff1493;
+  border-left: 5px solid #28a745;
   border-radius: 0 8px 8px 0;
 }
 
 aside .sidebar a.active span,
 aside .sidebar a.active h3 {
-  color: #ff1493;
+  color: #28a745;
   font-weight: 600;
 }
 
 aside .sidebar a.active .message-count {
-  background: #ff1493 !important;
+  background: #28a745 !important;
 }
 
 aside .sidebar .message-count {
@@ -365,29 +370,29 @@ aside .sidebar,
 }
 
 .menu-item-container .submenu a:hover {
-  background: rgba(255, 20, 147, 0.08);
-  color: #ff1493;
+  background: rgba(40, 167, 69, 0.08);
+  color: #28a745;
 }
 
 .menu-item-container .submenu a:hover span,
 .menu-item-container .submenu a:hover h3 {
-  color: #ff1493;
+  color: #28a745;
 }
 
 .menu-item-container .submenu a:hover {
-  background: rgba(255, 20, 147, 0.08);
-  color: #ff1493;
+  background: rgba(40, 167, 69, 0.08);
+  color: #28a745;
 }
 
 .menu-item-container .submenu a:hover span,
 .menu-item-container .submenu a:hover h3 {
-  color: #ff1493;
+  color: #28a745;
 }
 
 /* Tema escuro - CORRIGIDO */
 body.dark-theme-variables .menu-item-container .submenu {
   background: #202528 !important; /* Fundo escuro específico */
-  border: 1px solid rgba(255, 20, 147, 0.4) !important;
+  border: 1px solid rgba(40, 167, 69, 0.4) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9) !important;
 }
 
@@ -405,32 +410,32 @@ body.dark-theme-variables .menu-item-container .submenu a h3 {
 }
 
 body.dark-theme-variables .menu-item-container .submenu a:hover {
-  background: rgba(255, 20, 147, 0.3) !important;
-  color: #ff1493 !important;
+  background: rgba(40, 167, 69, 0.3) !important;
+  color: #28a745 !important;
 }
 
 body.dark-theme-variables .menu-item-container .submenu a:hover span,
 body.dark-theme-variables .menu-item-container .submenu a:hover h3 {
-  color: #ff1493 !important;
+  color: #28a745 !important;
 }
 
 /* Item ativo no submenu - tema dark */
 body.dark-theme-variables .menu-item-container .submenu a.active {
-  background: rgba(255, 20, 147, 0.35) !important;
-  color: #ff1493 !important;
-  border-left: 3px solid #ff1493 !important;
+  background: rgba(40, 167, 69, 0.35) !important;
+  color: #28a745 !important;
+  border-left: 3px solid #28a745 !important;
 }
 
 body.dark-theme-variables .menu-item-container .submenu a.active span,
 body.dark-theme-variables .menu-item-container .submenu a.active h3 {
-  color: #ff1493 !important;
+  color: #28a745 !important;
   font-weight: 600 !important;
 }
 
 /* Garantir que o tema dark funcione com máxima especificidade */
 .dark-theme-variables aside .sidebar .menu-item-container .submenu {
   background: #202528 !important;
-  border: 1px solid rgba(255, 20, 147, 0.4) !important;
+  border: 1px solid rgba(40, 167, 69, 0.4) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9) !important;
 }
 
@@ -460,7 +465,7 @@ aside .sidebar .message-count[data-count="0"] {
   display: none !important;
 }
 
-/* Forçar cor rosa para qualquer contador com texto */
+/* Forçar cor verde para qualquer contador com texto */
 aside .sidebar a .message-count:not(:empty) {
   background: #ff00d4 !important;
   color: white !important;
@@ -527,12 +532,16 @@ main .insights > div span {
   font-size: 2rem;
 }
 
+main .insights > div.sales span {
+  background: #28a745;
+}
+
 main .insights > div.expenses span {
-  background: rgb(235, 42, 42);
+  background: darkmagenta;
 }
 
 main .insights > div.income span {
-  background: var(--color-success);
+  background: rgba(255, 0, 157, 0.925);
 }
 
 main .insights > div .middle {
@@ -726,6 +735,45 @@ main .recent-orders a {
   grid-template-columns: 2.6rem auto;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+/* Botão Ver Todos os Logs */
+.right .recent-updates .view-all-logs {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.right .recent-updates .view-all-logs .btn-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.5rem;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-variant)
+  );
+  color: var(--color-white);
+  text-decoration: none;
+  border-radius: var(--border-radius-2);
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: 0 0.5rem 1rem rgba(255, 0, 212, 0.2);
+  transition: all 0.3s ease;
+}
+
+.right .recent-updates .view-all-logs .btn-view-all:hover {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-variant),
+    var(--color-primary)
+  );
+  transform: translateY(-2px);
+  box-shadow: 0 0.8rem 1.5rem rgba(255, 0, 212, 0.3);
+}
+
+.right .recent-updates .view-all-logs .btn-view-all .material-symbols-sharp {
+  font-size: 1.1rem;
 }
 
 /*=====================================================Análise de Vendas=================*/

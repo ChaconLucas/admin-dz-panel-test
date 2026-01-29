@@ -16,7 +16,7 @@ function carregarConfig() {
     
     // Fallback para valores padrão (apenas se não existir no .env)
     if (!isset($config['GROQ_API_KEY']) || $config['GROQ_API_KEY'] === 'your_groq_api_key_here') {
-        $config['GROQ_API_KEY'] = 'your_groq_api_key_here'; // Placeholder
+        $config['GROQ_API_KEY'] = ''; // Vazio = API desabilitada
     }
     
     if (!isset($config['DB_HOST'])) {

@@ -1,6 +1,12 @@
 <?php
 session_start();
 
+// Registrar log de logout antes de destruir a sessão
+if (isset($_SESSION['usuario_logado'])) {
+    require_once '../src/php/auto_log.php';
+    registrar_log($conexao, "saiu do sistema");
+}
+
 // Destruir todas as variáveis de sessão
 $_SESSION = array();
 

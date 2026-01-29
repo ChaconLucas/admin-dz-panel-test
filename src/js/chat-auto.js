@@ -27,7 +27,7 @@ window.verificarMensagensConversa = function (conversaId) {
 
       if (data.success && data.mensagens.length > 0) {
         console.log(
-          `✅ Conversa ${conversaId} tem ${data.mensagens.length} mensagens`
+          `✅ Conversa ${conversaId} tem ${data.mensagens.length} mensagens`,
         );
 
         // Verificar se a área de mensagens está visível
@@ -40,7 +40,7 @@ window.verificarMensagensConversa = function (conversaId) {
         // Verificar mensagens que não estão na tela
         const mensagensNaTela = document.querySelectorAll("[data-message-id]");
         const idsNaTela = Array.from(mensagensNaTela).map((m) =>
-          parseInt(m.getAttribute("data-message-id"))
+          parseInt(m.getAttribute("data-message-id")),
         );
 
         let novasMensagens = 0;
@@ -86,7 +86,7 @@ function detectarConversaAtiva() {
 
     // Estratégia 3: Procurar conversa com classe ativa
     const conversaAtivaSidebar = document.querySelector(
-      ".conversation-item.active, .conversation-item.selected"
+      ".conversation-item.active, .conversation-item.selected",
     );
     if (conversaAtivaSidebar) {
       const novoId = conversaAtivaSidebar.getAttribute("data-id");
@@ -101,7 +101,7 @@ function detectarConversaAtiva() {
     if (window.conversaAtual) {
       console.log(
         "Conversa detectada via variável global:",
-        window.conversaAtual
+        window.conversaAtual,
       );
       conversaAtiva = window.conversaAtual;
       return conversaAtiva;
@@ -183,7 +183,7 @@ function atualizarTodasConversasVisiveis() {
 
   // Buscar todas as conversas que têm mensagens não lidas
   const conversasComMensagens = document.querySelectorAll(
-    '.conversation-item[data-nao-lidas]:not([data-nao-lidas="0"])'
+    '.conversation-item[data-nao-lidas]:not([data-nao-lidas="0"])',
   );
 
   conversasComMensagens.forEach((conversa) => {
@@ -205,7 +205,7 @@ function forcarAtualizacaoConversa(conversaId) {
     .then((data) => {
       if (data.success && data.mensagens.length > 0) {
         console.log(
-          `Conversa ${conversaId} tem ${data.mensagens.length} mensagens`
+          `Conversa ${conversaId} tem ${data.mensagens.length} mensagens`,
         );
 
         // Se esta conversa está ativa no momento, adicionar as mensagens
@@ -222,12 +222,12 @@ function forcarAtualizacaoConversa(conversaId) {
           if (
             mensagemMaisRecente &&
             !document.querySelector(
-              `[data-message-id="${mensagemMaisRecente.id}"]`
+              `[data-message-id="${mensagemMaisRecente.id}"]`,
             )
           ) {
             console.log(
               "Adicionando mensagem da conversa forçada:",
-              mensagemMaisRecente.conteudo
+              mensagemMaisRecente.conteudo,
             );
             adicionarMensagemAoChat(mensagemMaisRecente);
           }
@@ -361,8 +361,8 @@ function adicionarMensagemAoChat(mensagem) {
     mensagem.remetente === "admin"
       ? "admin"
       : mensagem.remetente === "usuario"
-      ? "client"
-      : "ia"
+        ? "client"
+        : "ia"
   }`;
   messageDiv.setAttribute("data-message-id", mensagem.id);
 
@@ -389,7 +389,7 @@ function adicionarMensagemAoChat(mensagem) {
   // Animar entrada da nova mensagem
   messageDiv.style.opacity = "0";
   messageDiv.style.transform = "translateY(20px)";
-  messageDiv.style.background = "#f0f0f0"; // Destaque temporário para debug
+  messageDiv.style.background = "#f0f0f0";
 
   chatArea.appendChild(messageDiv);
 
@@ -470,7 +470,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Se já há uma conversa ativa (detectar pela URL ou elemento ativo)
     const conversaAtual = document.querySelector(
-      ".conversa-ativa, .active-conversation"
+      ".conversa-ativa, .active-conversation",
     );
     if (conversaAtual) {
       const conversaId =
@@ -520,7 +520,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // 3. Conversa ativa na sidebar
         if (!conversaId) {
           const ativa = document.querySelector(
-            ".conversation-item.active[data-id], .conversation-item.selected[data-id]"
+            ".conversation-item.active[data-id], .conversation-item.selected[data-id]",
           );
           if (ativa) {
             conversaId = ativa.getAttribute("data-id");
@@ -530,7 +530,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // 4. Primeira conversa com mensagens não lidas
         if (!conversaId) {
           const comMensagens = document.querySelector(
-            '.conversation-item[data-nao-lidas]:not([data-nao-lidas="0"])'
+            '.conversation-item[data-nao-lidas]:not([data-nao-lidas="0"])',
           );
           if (comMensagens) {
             conversaId = comMensagens.getAttribute("data-id");
@@ -555,14 +555,14 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((data) => {
           if (data.success && data.mensagens.length > 0) {
             console.log(
-              `Conversa ${conversaId} tem ${data.mensagens.length} mensagens`
+              `Conversa ${conversaId} tem ${data.mensagens.length} mensagens`,
             );
 
             // Verificar se há mensagens novas que não estão na tela
             const mensagensNaTela =
               document.querySelectorAll("[data-message-id]");
             const idsNaTela = Array.from(mensagensNaTela).map((m) =>
-              parseInt(m.getAttribute("data-message-id"))
+              parseInt(m.getAttribute("data-message-id")),
             );
 
             data.mensagens.forEach((mensagem) => {

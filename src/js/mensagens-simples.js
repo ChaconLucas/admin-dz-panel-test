@@ -22,7 +22,7 @@ function verificarNovasMensagens() {
 
   console.log(
     "🔍 VERIFICANDO MENSAGENS DA CONVERSA:",
-    conversaAtualSelecionada
+    conversaAtualSelecionada,
   );
 
   const url = `api-mensagens.php?conversa_id=${conversaAtualSelecionada}`;
@@ -43,7 +43,7 @@ function verificarNovasMensagens() {
 
         // Verificar quais mensagens já estão na tela
         const mensagensExistentes = Array.from(
-          container.querySelectorAll("[data-message-id]")
+          container.querySelectorAll("[data-message-id]"),
         ).map((el) => parseInt(el.getAttribute("data-message-id")));
 
         console.log("📋 MENSAGENS JÁ NA TELA:", mensagensExistentes);
@@ -125,8 +125,3 @@ setInterval(() => {
     verificarNovasMensagens();
   }
 }, 2000);
-
-// Para debug manual
-window.forcarVerificacao = () => verificarNovasMensagens();
-
-console.log("🎯 SISTEMA DE MENSAGENS EM TEMPO REAL CARREGADO");

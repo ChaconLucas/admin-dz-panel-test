@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const saved = localStorage.getItem("sidebarActiveHref");
     if (saved) {
       const savedLink = Array.from(sidebarLinks).find(
-        (l) => l.getAttribute("href") === saved
+        (l) => l.getAttribute("href") === saved,
       );
       if (savedLink) {
         clearActive();
@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
 window.atualizarContadorMensagens = async function () {
   try {
     const response = await fetch(
-      "../sistema.php?api=1&endpoint=admin&action=get_stats"
+      "../sistema.php?api=1&endpoint=admin&action=get_stats",
     );
     if (response.ok) {
       const stats = await response.json();
@@ -145,7 +145,7 @@ window.atualizarContadorMensagens = async function () {
           "🔢 Atualizando contador:",
           element.textContent,
           "->",
-          novasNaoLidas
+          novasNaoLidas,
         );
 
         // Animação de atualização apenas se o número mudou
@@ -178,7 +178,7 @@ window.atualizarContadorMensagens = async function () {
       console.error(
         "❌ Response não OK:",
         response.status,
-        response.statusText
+        response.statusText,
       );
       const errorText = await response.text();
       console.error("❌ Error response:", errorText);
@@ -187,5 +187,3 @@ window.atualizarContadorMensagens = async function () {
     console.error("❌ Erro ao atualizar contador de mensagens:", error);
   }
 };
-
-// Botão de teste removido

@@ -1114,21 +1114,7 @@ require_once 'helper-contador.php';
       // Inicializar quando a página carregar
       document.addEventListener('DOMContentLoaded', inicializarEventListeners);
       
-      // Função para debug - verificar estado das conversas
-      function debugConversas() {
-        console.log('=== DEBUG CONVERSAS ===');
-        document.querySelectorAll('.conversation-item').forEach(item => {
-          const id = item.getAttribute('data-id');
-          const naoLidas = item.getAttribute('data-nao-lidas');
-          const hasIndicator = !!item.querySelector('.unread-indicator');
-          const hasCount = !!item.querySelector('.unread-count');
-          
-          console.log(`Conversa ${id}: nao-lidas="${naoLidas}", indicator=${hasIndicator}, count=${hasCount}`);
-        });
-      }
-      
-      // Executar debug a cada 5 segundos (remover em produção)
-      setInterval(debugConversas, 5000);
+
       
 
     </script>

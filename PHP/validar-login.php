@@ -31,6 +31,11 @@ if (isset($_POST['btn_login'])) {
             $_SESSION['usuario_id'] = $usuario['id'];
             $_SESSION['usuario_nome'] = $usuario['nome'];
             $_SESSION['usuario_email'] = $usuario['email'];
+            $_SESSION['nome_usuario'] = $usuario['nome']; // Para os logs
+            
+            // Registrar log de login
+            require_once '../src/php/auto_log.php';
+            registrar_log($conexao, "fez login no sistema");
             
             // Se marcou "lembrar-me", criar cookie
             if (isset($_POST['lembrar'])) {

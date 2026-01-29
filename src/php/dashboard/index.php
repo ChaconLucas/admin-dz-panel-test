@@ -6,15 +6,173 @@ if (!isset($_SESSION['usuario_logado'])) {
     exit();
 }
 
-// Calcular mensagens não lidas
+/*
+===============================================
+SQL PARA CRIAÇÃO DAS TABELAS DO DASHBOARD
+Execute este script no MySQL/phpMyAdmin na segunda-feira
+===============================================
+
+-- Tabela de Logs de Administradores
+CREATE TABLE IF NOT EXISTS admin_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    admin_nome VARCHAR(255) NOT NULL,
+    acao TEXT NOT NULL,
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45)
+);
+
+-- Tabela de Clientes
+CREATE TABLE IF NOT EXISTS clientes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    telefone VARCHAR(20),
+    endereco TEXT,
+    cidade VARCHAR(100),
+    estado VARCHAR(2),
+    cep VARCHAR(10),
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('ativo', 'inativo') DEFAULT 'ativo'
+);
+
+-- Tabela de Produtos 
+CREATE TABLE IF NOT EXISTS produtos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    descricao TEXT,
+    preco DECIMAL(10,2) NOT NULL,
+    estoque INT DEFAULT 0,
+    categoria VARCHAR(100),
+    imagem VARCHAR(255),
+    status ENUM('ativo', 'inativo') DEFAULT 'ativo',
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Pedidos
+CREATE TABLE IF NOT EXISTS pedidos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    valor_total DECIMAL(10,2) NOT NULL,
+    status ENUM('pendente', 'processando', 'enviado', 'entregue', 'cancelado') DEFAULT 'pendente',
+    data_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_entrega DATE NULL,
+    observacoes TEXT,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
+);
+
+-- Tabela de Itens do Pedido
+CREATE TABLE IF NOT EXISTS itens_pedido (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pedido_id INT NOT NULL,
+    produto_id INT NOT NULL,
+    quantidade INT NOT NULL,
+    preco_unitario DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE,
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE CASCADE
+);
+===============================================
+*/
+
+// Calcular mensagens não lidas (TABELA QUE JÁ EXISTE)
 require_once '../sistema.php';
 global $conexao;
+
+// ===============================================
+// FUNÇÕES AUXILIARES
+// ===============================================
+
+/**
+ * Registrar log de atividade do administrador
+ */
+function registrar_log($conexao, $mensagem) {
+    try {
+        // Capturar dados da sessão
+        $admin_id = $_SESSION['usuario_logado'] ?? 0;
+        $admin_nome = $_SESSION['nome_usuario'] ?? 'Admin';
+        
+        // Capturar IP do usuário
+        $ip_address = '';
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            $ip_address = $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ip_address = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else {
+            $ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        }
+        
+        // Inserir no banco
+        $stmt = $conexao->prepare("INSERT INTO admin_logs (admin_id, admin_nome, acao, ip_address) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("isss", $admin_id, $admin_nome, $mensagem, $ip_address);
+        $stmt->execute();
+        $stmt->close();
+        
+    } catch (Exception $e) {
+        // Silencioso se tabela não existir ainda
+        error_log("Erro ao registrar log: " . $e->getMessage());
+    }
+}
+
+/**
+ * Converter timestamp em formato amigável
+ */
+function tempo_amigavel($timestamp) {
+    $agora = new DateTime();
+    $data_log = new DateTime($timestamp);
+    $diferenca = $agora->diff($data_log);
+    
+    if ($diferenca->d > 0) {
+        if ($diferenca->d == 1) {
+            return "Ontem às " . $data_log->format('H:i');
+        } else {
+            return $data_log->format('d/m') . " às " . $data_log->format('H:i');
+        }
+    } elseif ($diferenca->h > 0) {
+        return "há " . $diferenca->h . " hora" . ($diferenca->h > 1 ? "s" : "");
+    } elseif ($diferenca->i > 0) {
+        return "há " . $diferenca->i . " minuto" . ($diferenca->i > 1 ? "s" : "");
+    } else {
+        return "Agora mesmo";
+    }
+}
+
 $nao_lidas = 0;
 try {
     $result = $conexao->query("SELECT COUNT(*) as total FROM mensagens WHERE lida = FALSE AND remetente != 'admin'");
     $nao_lidas = $result ? $result->fetch_assoc()['total'] : 0;
 } catch (Exception $e) {
     error_log("Erro ao contar mensagens: " . $e->getMessage());
+}
+
+// ===============================================
+// VARIÁVEIS GLOBAIS DO DASHBOARD
+// (Valores padrão até criar as tabelas na segunda)
+// ===============================================
+
+// Vendas
+$vendas_hoje = 0;
+$vendas_total = 0;
+
+// Pedidos
+$pedidos_hoje = 0;
+$pedidos_total = 0;
+
+// Clientes
+$clientes_ativos = 0;
+$clientes_total = 0;
+
+// Produtos sem estoque (para sidebar)
+$produtos_sem_estoque = 1; // Valor de exemplo para mostrar "ATENÇÃO"
+
+// Pedidos pendentes (para sidebar)
+$pedidos_pendentes = 0;
+
+// Dados para gráfico de performance (últimos 7 dias - todos zerados)
+$labels_7_dias = [];
+$vendas_7_dias = [];
+for ($i = 6; $i >= 0; $i--) {
+    $labels_7_dias[] = date('d/m', strtotime("-$i days"));
+    $vendas_7_dias[] = 0; // Zero até ter dados reais
 }
 
 // Buscar todos os administradores do banco (apenas os 3 que existem)
@@ -35,6 +193,20 @@ try {
 } catch (Exception $e) {
     error_log("Erro ao buscar admins: " . $e->getMessage());
 }
+
+// Buscar logs de atividade dos administradores (últimos 3)
+$admin_logs = [];
+try {
+    $result = $conexao->query("SELECT admin_nome, acao, data_hora FROM admin_logs ORDER BY data_hora DESC LIMIT 3");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $admin_logs[] = $row;
+        }
+    }
+} catch (Exception $e) {
+    // Tabela ainda não existe - silencioso
+    error_log("Tabela admin_logs não encontrada: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,6 +220,8 @@ try {
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp"
       rel="stylesheet"
     />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>Responsive Dashboard</title>
   </head>
 
@@ -146,9 +320,6 @@ try {
       <!----------FINAL ASIDE------------>
       <main>
         <h1>Dashboard</h1>
-        <div class="date">
-          <input type="date" />
-        </div>
         <!-- Dashboard Cards -->
         <div class="insights">
           <div class="sales">
@@ -156,12 +327,12 @@ try {
             <div class="middle">
               <div class="left">
                 <h3>Total Vendas</h3>
-                <h1>R$ 0,00</h1>
+                <h1>R$ <?php echo number_format($vendas_hoje, 2, ',', '.'); ?></h1>
               </div>
               <div class="progress">
                 <canvas id="salesChart" width="92" height="92"></canvas>
                 <div class="number">
-                  <p>0%</p>
+                  <p><?php echo $vendas_total > 0 ? round(($vendas_hoje / $vendas_total) * 100) : 0; ?>%</p>
                 </div>
               </div>
             </div>
@@ -173,12 +344,12 @@ try {
             <div class="middle">
               <div class="left">
                 <h3>Pedidos</h3>
-                <h1>0</h1>
+                <h1><?php echo $pedidos_hoje; ?></h1>
               </div>
               <div class="progress">
                 <canvas id="ordersChart" width="92" height="92"></canvas>
                 <div class="number">
-                  <p>0%</p>
+                  <p><?php echo $pedidos_total > 0 ? round(($pedidos_hoje / $pedidos_total) * 100) : 0; ?>%</p>
                 </div>
               </div>
             </div>
@@ -190,12 +361,12 @@ try {
             <div class="middle">
               <div class="left">
                 <h3>Clientes</h3>
-                <h1>0</h1>
+                <h1><?php echo $clientes_ativos; ?></h1>
               </div>
               <div class="progress">
                 <canvas id="clientsChart" width="92" height="92"></canvas>
                 <div class="number">
-                  <p>0%</p>
+                  <p><?php echo $clientes_total > 0 ? round(($clientes_ativos / $clientes_total) * 100) : 0; ?>%</p>
                 </div>
               </div>
             </div>
@@ -541,32 +712,20 @@ try {
         </div>
         <!------------------------FINAL TOP----------------------->
         <div class="recent-updates">
-          <h2>Últimas Atualizações</h2>
+          <h2>Log de Atividades do Admin</h2>
           <div class="updates">
-            <?php if (!empty($admins)): ?>
-              <?php foreach ($admins as $admin): ?>
+            <?php if (!empty($admin_logs)): ?>
+              <?php foreach ($admin_logs as $log): ?>
                 <div class="update">
                   <div class="profile-photo">
                     <img src="../../../assets/images/logo.png" alt="" />
                   </div>
                   <div class="message">
                     <p>
-                      <b><?php echo htmlspecialchars($admin['nome']); ?></b> acessou o sistema administrativo
+                      <b><?php echo htmlspecialchars($log['admin_nome']); ?></b> <?php echo htmlspecialchars($log['acao']); ?>
                     </p>
                     <small class="text-muted">
-                      <?php 
-                        $data = new DateTime($admin['created_at']);
-                        $agora = new DateTime();
-                        $diferenca = $agora->diff($data);
-                        
-                        if ($diferenca->days > 0) {
-                          echo $diferenca->days . " dias atrás";
-                        } elseif ($diferenca->h > 0) {
-                          echo $diferenca->h . " horas atrás";
-                        } else {
-                          echo $diferenca->i . " minutos atrás";
-                        }
-                      ?>
+                      <?php echo tempo_amigavel($log['data_hora']); ?>
                     </small>
                   </div>
                 </div>
@@ -577,32 +736,20 @@ try {
                   <img src="../../../assets/images/logo.png" alt="" />
                 </div>
                 <div class="message">
-                  <p><b>Sistema</b> Nenhum administrador encontrado</p>
+                  <p><b>Sistema</b> Nenhum log de administrador encontrado</p>
                   <small class="text-muted">Agora mesmo</small>
                 </div>
               </div>
             <?php endif; ?>
           </div>
+          <div class="view-all-logs">
+            <a href="all-logs.php" class="btn-view-all">
+              <span class="material-symbols-sharp">history</span>
+              Ver Todos os Logs
+            </a>
+          </div>
         </div>
-        <!--------------------------------FINAL ULTIMAS ATT--------------------------->
-        <?php
-        // Definir variáveis para evitar warnings
-        $produtos_sem_estoque = 0;
-        try {
-            $result = $conexao->query("SELECT COUNT(*) as total FROM produtos WHERE estoque = 0 OR estoque IS NULL");
-            $produtos_sem_estoque = $result ? $result->fetch_assoc()['total'] : 0;
-        } catch (Exception $e) {
-            // Silencioso se tabela não existir
-        }
-
-        $pedidos_pendentes = 0;
-        try {
-            $result = $conexao->query("SELECT COUNT(*) as total FROM pedidos WHERE status = 'pendente'");
-            $pedidos_pendentes = $result ? $result->fetch_assoc()['total'] : 0;
-        } catch (Exception $e) {
-            // Silencioso se tabela não existir
-        }
-        ?>
+        <!--------------------------------FINAL ULTIMAS ATT--------------------------->                
         <div class="sales-analytics">
           <h2>Informações Operacionais</h2>
           <div class="item offline">
@@ -668,24 +815,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function initPerformanceChart() {
     const ctx = document.getElementById('performanceChart').getContext('2d');
     
-    // Dados fake para os últimos 7 dias
-    const labels = [];
-    const data = [];
-    const today = new Date();
-    
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        labels.push(date.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }));
-        data.push(Math.floor(Math.random() * 100)); // Dados aleatórios por enquanto
-    }
+    // Dados reais do PHP (últimos 7 dias)
+    const labels = <?php echo json_encode($labels_7_dias); ?>;
+    const data = <?php echo json_encode($vendas_7_dias); ?>;
     
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Vendas',
+                label: 'Vendas (R$)',
                 data: data,
                 borderColor: '#ff00d4',
                 backgroundColor: 'rgba(255, 0, 212, 0.1)',
@@ -704,6 +843,16 @@ function initPerformanceChart() {
             plugins: {
                 legend: {
                     display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                        }
+                    }
                 }
             },
             scales: {
@@ -713,7 +862,10 @@ function initPerformanceChart() {
                         color: 'rgba(255, 255, 255, 0.1)'
                     },
                     ticks: {
-                        color: '#a3bdcc'
+                        color: '#a3bdcc',
+                        callback: function(value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR');
+                        }
                     }
                 },
                 x: {
@@ -736,13 +888,26 @@ function initPerformanceChart() {
 
 // Função para criar gráficos donut nos cards
 function initCardCharts() {
+    // Dados PHP para os gráficos
+    const vendas_hoje = <?php echo $vendas_hoje; ?>;
+    const vendas_total = <?php echo $vendas_total; ?>;
+    const pedidos_hoje = <?php echo $pedidos_hoje; ?>;
+    const pedidos_total = <?php echo $pedidos_total; ?>;
+    const clientes_ativos = <?php echo $clientes_ativos; ?>;
+    const clientes_total = <?php echo $clientes_total; ?>;
+    
+    // Calcular percentuais (garantir que não seja 0/0)
+    const vendas_percent = vendas_total > 0 ? Math.min((vendas_hoje / vendas_total) * 100, 100) : 0;
+    const pedidos_percent = pedidos_total > 0 ? Math.min((pedidos_hoje / pedidos_total) * 100, 100) : 0;
+    const clientes_percent = clientes_total > 0 ? Math.min((clientes_ativos / clientes_total) * 100, 100) : 0;
+
     // Gráfico de Vendas
     const salesCtx = document.getElementById('salesChart').getContext('2d');
     new Chart(salesCtx, {
         type: 'doughnut',
         data: {
             datasets: [{
-                data: [0, 100],
+                data: [vendas_percent, 100 - vendas_percent],
                 backgroundColor: ['#ff00d4', 'rgba(255, 255, 255, 0.1)'],
                 borderWidth: 0,
                 cutout: '70%'
@@ -764,7 +929,7 @@ function initCardCharts() {
         type: 'doughnut',
         data: {
             datasets: [{
-                data: [0, 100],
+                data: [pedidos_percent, 100 - pedidos_percent],
                 backgroundColor: ['#eb2a2a', 'rgba(255, 255, 255, 0.1)'],
                 borderWidth: 0,
                 cutout: '70%'
@@ -786,7 +951,7 @@ function initCardCharts() {
         type: 'doughnut',
         data: {
             datasets: [{
-                data: [0, 100],
+                data: [clientes_percent, 100 - clientes_percent],
                 backgroundColor: ['#41f1b6', 'rgba(255, 255, 255, 0.1)'],
                 borderWidth: 0,
                 cutout: '70%'

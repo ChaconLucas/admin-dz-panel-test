@@ -7,6 +7,9 @@ if (!isset($_SESSION['usuario_logado'])) {
 
 // Incluir contador de mensagens
 require_once 'helper-contador.php';
+
+// Incluir sistema de logs automático
+require_once '../auto_log.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
