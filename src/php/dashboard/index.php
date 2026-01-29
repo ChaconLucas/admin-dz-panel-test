@@ -43,6 +43,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../../css/dashboard.css" />
     <link rel="stylesheet" href="../../css/dashboard-sections.css" />
+    <link rel="stylesheet" href="../../css/dashboard-cards.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp"
       rel="stylesheet"
@@ -148,124 +149,116 @@ try {
         <div class="date">
           <input type="date" />
         </div>
+        <!-- Dashboard Cards -->
         <div class="insights">
           <div class="sales">
-            <span class="material-symbols-sharp"> bar_chart_4_bars </span>
+            <span class="material-symbols-sharp">trending_up</span>
             <div class="middle">
               <div class="left">
                 <h3>Total Vendas</h3>
-                <h1>R$578.000,00</h1>
+                <h1>R$ 0,00</h1>
               </div>
               <div class="progress">
-                <svg>
-                  <circle cx="38" cy="38" r="36"></circle>
-                </svg>
+                <canvas id="salesChart" width="92" height="92"></canvas>
                 <div class="number">
-                  <p>81%</p>
+                  <p>0%</p>
                 </div>
               </div>
             </div>
             <small class="text-muted">Últimas 24 horas</small>
           </div>
-          <!------------------------FINAL VENDAS---------------------------->
+          
           <div class="expenses">
-            <span class="material-symbols-sharp"> Receipt_long </span>
+            <span class="material-symbols-sharp">shopping_cart</span>
             <div class="middle">
               <div class="left">
-                <h3>Total Custos</h3>
-                <h1>R$115.000,00</h1>
+                <h3>Pedidos</h3>
+                <h1>0</h1>
               </div>
               <div class="progress">
-                <svg>
-                  <circle cx="38" cy="38" r="36"></circle>
-                </svg>
+                <canvas id="ordersChart" width="92" height="92"></canvas>
                 <div class="number">
-                  <p>19,9%</p>
+                  <p>0%</p>
                 </div>
               </div>
             </div>
-            <small class="text-muted">Últimas 24 horas</small>
+            <small class="text-muted">Pedidos hoje</small>
           </div>
-          <!------------------------FINAL CUSTOS---------------------------->
+          
           <div class="income">
-            <span class="material-symbols-sharp"> Savings </span>
+            <span class="material-symbols-sharp">group</span>
             <div class="middle">
               <div class="left">
-                <h3>Total Lucro</h3>
-                <h1>R$463.000,00</h1>
+                <h3>Clientes</h3>
+                <h1>0</h1>
               </div>
               <div class="progress">
-                <svg>
-                  <circle cx="38" cy="38" r="36"></circle>
-                </svg>
+                <canvas id="clientsChart" width="92" height="92"></canvas>
                 <div class="number">
-                  <p>80,1%</p>
+                  <p>0%</p>
                 </div>
               </div>
             </div>
-            <small class="text-muted">Últimas 24 horas</small>
+            <small class="text-muted">Clientes ativos</small>
           </div>
-          <!------------------------FINAL RENDA---------------------------->
+        </div>
+        
+        <!-- Gráfico de Performance -->
+        <div class="chart-container">
+          <h2>Últimos 7 dias</h2>
+          <canvas id="performanceChart" width="400" height="200"></canvas>
         </div>
         <!---------------------------FINAL INSIGHTS---------------------------->
         <div class="recent-orders">
-          <h2>Últimas Vendas</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Nome do Produto</th>
-                <th>Número do Produto</th>
-                <th>Pagaentos</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Top coat D&Z Branquinho</td>
-                <td>3558</td>
-                <td>Boleto</td>
-                <td class="warning">Pendente</td>
-                <td class="primary">Detalhes</td>
-              </tr>
-              <tr>
-                <td>Sun 5 Original</td>
-                <td>2038</td>
-                <td>Pix</td>
-                <td class="success">Aprovado</td>
-                <td class="primary">Detalhes</td>
-              </tr>
-              <tr>
-                <td>Coleto Oval Sioux (Off White)</td>
-                <td>2100</td>
-                <td>Cartão de Crédito</td>
-                <td class="warning">Pendente</td>
-                <td class="primary">Detalhes</td>
-              </tr>
-              <tr>
-                <td>Top coat D&Z Branquinho</td>
-                <td>3558</td>
-                <td>Pix</td>
-                <td class="success">Aprovado</td>
-                <td class="primary">Detalhes</td>
-              </tr>
-              <tr>
-                <td>Esmalte D&Z Coleção Luxo Cacau</td>
-                <td>0820</td>
-                <td>Cartão de Crédito</td>
-                <td class="danger">Recusado</td>
-                <td class="primary">Detalhes</td>
-              </tr>
-              <tr>
-                <td>Motor Porquinho D&Z</td>
-                <td>3888</td>
-                <td>Boleto</td>
-                <td class="success">Aprovado</td>
-                <td class="primary">Detalhes</td>
-              </tr>
-            </tbody>
-          </table>
-          <a href="#">Mostrar Todos</a>
+          <h2>Pedidos Recentes</h2>
+          <?php
+          // Buscar pedidos do banco de dados
+          $pedidos = [];
+          try {
+              $result = $conexao->query("SELECT * FROM pedidos ORDER BY created_at DESC LIMIT 6");
+              if ($result) {
+                  while ($row = $result->fetch_assoc()) {
+                      $pedidos[] = $row;
+                  }
+              }
+          } catch (Exception $e) {
+              // Silencioso - se não houver tabela pedidos, $pedidos fica vazio
+          }
+          
+          if (empty($pedidos)): ?>
+            <div class="no-orders">
+              <span class="material-symbols-sharp">inbox</span>
+              <p>Nenhum pedido registrado no momento</p>
+            </div>
+          <?php else: ?>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cliente</th>
+                  <th>Produto</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($pedidos as $pedido): ?>
+                <tr>
+                  <td>#<?php echo $pedido['id']; ?></td>
+                  <td><?php echo htmlspecialchars($pedido['cliente_nome'] ?? 'N/A'); ?></td>
+                  <td><?php echo htmlspecialchars($pedido['produto_nome'] ?? 'N/A'); ?></td>
+                  <td>R$ <?php echo number_format($pedido['valor'] ?? 0, 2, ',', '.'); ?></td>
+                  <td class="<?php echo $pedido['status'] == 'aprovado' ? 'success' : ($pedido['status'] == 'pendente' ? 'warning' : 'danger'); ?>">
+                    <?php echo ucfirst($pedido['status'] ?? 'pendente'); ?>
+                  </td>
+                  <td class="primary">Detalhes</td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+            <a href="orders.php">Mostrar Todos</a>
+          <?php endif; ?>
         </div>
 
         <!-- Seção de Vendedores -->
@@ -592,56 +585,67 @@ try {
           </div>
         </div>
         <!--------------------------------FINAL ULTIMAS ATT--------------------------->
+        <?php
+        // Definir variáveis para evitar warnings
+        $produtos_sem_estoque = 0;
+        try {
+            $result = $conexao->query("SELECT COUNT(*) as total FROM produtos WHERE estoque = 0 OR estoque IS NULL");
+            $produtos_sem_estoque = $result ? $result->fetch_assoc()['total'] : 0;
+        } catch (Exception $e) {
+            // Silencioso se tabela não existir
+        }
+
+        $pedidos_pendentes = 0;
+        try {
+            $result = $conexao->query("SELECT COUNT(*) as total FROM pedidos WHERE status = 'pendente'");
+            $pedidos_pendentes = $result ? $result->fetch_assoc()['total'] : 0;
+        } catch (Exception $e) {
+            // Silencioso se tabela não existir
+        }
+        ?>
         <div class="sales-analytics">
-          <h2>Análises de Vendas</h2>
-          <div class="item online">
-            <div class="icon">
-              <span class="material-symbols-sharp"> shopping_cart </span>
-            </div>
-            <div class="right">
-              <div class="info">
-                <h3>PEDIDOS ONLINE</h3>
-                <small class="text-muted">Últimas 24 horas</small>
-              </div>
-              <h5 class="success">+58%</h5>
-              <h3>4872</h3>
-            </div>
-          </div>
+          <h2>Informações Operacionais</h2>
           <div class="item offline">
             <div class="icon">
-              <span class="material-symbols-sharp"> local_mall </span>
+              <span class="material-symbols-sharp">inventory_2</span>
             </div>
             <div class="right">
               <div class="info">
-                <h3>PEDIDOS OFFLINE</h3>
-                <small class="text-muted">Últimas 24 horas</small>
+                <h3>PRODUTOS SEM ESTOQUE</h3>
+                <small class="text-muted">Produtos em falta <span class="number"><?php echo $produtos_sem_estoque; ?></span></small>
               </div>
-              <h5 class="danger">-14%</h5>
-              <h3>987</h3>
+              <h5 class="danger"><?php echo $produtos_sem_estoque > 0 ? 'ATENÇÃO' : 'OK'; ?></h5>
             </div>
           </div>
           <div class="item customers">
             <div class="icon">
-              <span class="material-symbols-sharp"> person </span>
+              <span class="material-symbols-sharp">mail</span>
             </div>
             <div class="right">
               <div class="info">
-                <h3>NOVOS CLIENTES</h3>
-                <small class="text-muted">Últimas 24 horas</small>
+                <h3>MENSAGENS PENDENTES</h3>
+                <small class="text-muted">Aguardando resposta <span class="number"><?php echo $nao_lidas; ?></span></small>
               </div>
-              <h5 class="success">+72%</h5>
-              <h3>80452</h3>
+              <h5 class="<?php echo $nao_lidas > 0 ? 'warning' : 'success'; ?>"><?php echo $nao_lidas > 0 ? 'PENDENTE' : 'OK'; ?></h5>
             </div>
           </div>
-          <div class="item add-product">
-          <div>
-            <span class="material-symbols-sharp"> add </span>
-            <h3>Adicionar Produto</h3>
+          <div class="item online">
+            <div class="icon">
+              <span class="material-symbols-sharp">pending_actions</span>
+            </div>
+            <div class="right">
+              <div class="info">
+                <h3>PEDIDOS PENDENTES</h3>
+                <small class="text-muted">Aguardando processamento <span class="number"><?php echo $pedidos_pendentes; ?></span></small>
+              </div>
+              <h5 class="<?php echo $pedidos_pendentes > 0 ? 'warning' : 'success'; ?>"><?php echo $pedidos_pendentes > 0 ? 'AGUARDANDO' : 'OK'; ?></h5>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="../../js/dashboard.js"></script>
 <script src="../../js/contador-auto.js"></script>
 
@@ -654,7 +658,150 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.classList.add('dark-theme-variables');
         console.log('Tema dark aplicado em index.php');
     }
+    
+    // Inicializar Chart.js
+    initPerformanceChart();
+    initCardCharts();
 });
+
+// Função para inicializar o gráfico de performance
+function initPerformanceChart() {
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    
+    // Dados fake para os últimos 7 dias
+    const labels = [];
+    const data = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        labels.push(date.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }));
+        data.push(Math.floor(Math.random() * 100)); // Dados aleatórios por enquanto
+    }
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Vendas',
+                data: data,
+                borderColor: '#ff00d4',
+                backgroundColor: 'rgba(255, 0, 212, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#ff00d4',
+                pointBorderColor: '#ff00d4',
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#a3bdcc'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#a3bdcc'
+                    }
+                }
+            },
+            elements: {
+                point: {
+                    hoverBackgroundColor: '#ff00d4'
+                }
+            }
+        }
+    });
+}
+
+// Função para criar gráficos donut nos cards
+function initCardCharts() {
+    // Gráfico de Vendas
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+    new Chart(salesCtx, {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [0, 100],
+                backgroundColor: ['#ff00d4', 'rgba(255, 255, 255, 0.1)'],
+                borderWidth: 0,
+                cutout: '70%'
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            }
+        }
+    });
+
+    // Gráfico de Pedidos
+    const ordersCtx = document.getElementById('ordersChart').getContext('2d');
+    new Chart(ordersCtx, {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [0, 100],
+                backgroundColor: ['#eb2a2a', 'rgba(255, 255, 255, 0.1)'],
+                borderWidth: 0,
+                cutout: '70%'
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            }
+        }
+    });
+
+    // Gráfico de Clientes
+    const clientsCtx = document.getElementById('clientsChart').getContext('2d');
+    new Chart(clientsCtx, {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [0, 100],
+                backgroundColor: ['#41f1b6', 'rgba(255, 255, 255, 0.1)'],
+                borderWidth: 0,
+                cutout: '70%'
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            }
+        }
+    });
+}
 </script>
   </body>
 </html>
