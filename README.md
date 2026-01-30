@@ -11,11 +11,13 @@
 3. [Estrutura do Projeto](#-estrutura-do-projeto)
 4. [Instalação e Configuração](#-instalação-e-configuração)
 5. [Funcionalidades Principais](#-funcionalidades-principais)
-6. [Sistema de Logs](#-sistema-de-logs)
-7. [Como Usar](#-como-usar)
-8. [Configurações Avançadas](#-configurações-avançadas)
-9. [Segurança](#-segurança)
-10. [Suporte](#-suporte)
+6. [Sistema de Detecção Online](#-sistema-de-detecção-online)
+7. [Sistema de Logs](#-sistema-de-logs)
+8. [API Endpoints](#-api-endpoints-disponíveis)
+9. [Como Usar](#-como-usar)
+10. [Configurações Avançadas](#-configurações-avançadas)
+11. [Segurança](#-segurança)
+12. [Suporte](#-suporte)
 
 ---
 
@@ -29,6 +31,7 @@ O **D&Z Admin** é um sistema completo de administração desenvolvido para pequ
 - **Sistema de Logs**: Auditoria completa de todas as ações
 - **Dashboard Analytics**: Métricas e gráficos em tempo real
 - **Interface Moderna**: Design responsivo com tema D&Z
+- **Sistema de Detecção Online**: Monitoramento real de administradores ativos
 
 ---
 
@@ -36,7 +39,7 @@ O **D&Z Admin** é um sistema completo de administração desenvolvido para pequ
 
 ### **Backend:**
 
-- ![PHP](https://img.shields.io/badge/PHP-7.4+-777BB4?style=flat&logo=php&logoColor=white) **PHP 7.4+**
+- ![PHP](https://img.shields.io/badge/PHP-8.0+-777BB4?style=flat&logo=php&logoColor=white) **PHP 8.0+**
 - ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat&logo=mysql&logoColor=white) **MySQL 8.0**
 - ![XAMPP](https://img.shields.io/badge/XAMPP-Local_Server-FB7A24?style=flat&logo=xampp&logoColor=white) **XAMPP**
 
@@ -49,7 +52,7 @@ O **D&Z Admin** é um sistema completo de administração desenvolvido para pequ
 
 ### **APIs Externas:**
 
-- ![Groq](https://img.shields.io/badge/Groq-AI_Chat-000000?style=flat&logo=ai&logoColor=white) **Groq API** (Chat IA)
+- ![Groq](https://img.shields.io/badge/Groq-AI_Chat-000000?style=flat&logo=ai&logoColor=white) **Groq API** (llama-3.3-70b-versatile)
 - ![Material](https://img.shields.io/badge/Material-Icons-757575?style=flat&logo=material-design&logoColor=white) **Material Symbols**
 
 ---
@@ -278,6 +281,175 @@ const UPDATE_INTERVAL = 2000; // 2 segundos
 - ✅ **CSRF Protection**: Tokens de validação
 - ✅ **XSS Prevention**: htmlspecialchars em outputs
 - ✅ **Session Security**: Validação de sessões
+
+## 🔍 **Sistema de Detecção Online**
+
+### **🎯 Monitoramento Real de Administradores**
+
+O sistema detecta apenas administradores que estão **realmente logados** no momento:
+
+#### ✅ **Critérios para estar "Online":**
+
+- Usuário deve ter sessão ativa
+- Atividade nos **últimos 5 minutos**
+- Sessão registrada na tabela `admin_sessions`
+
+#### 🔄 **Funcionamento:**
+
+1. **Ao acessar qualquer página**: Sessão é registrada/atualizada
+2. **A cada 1 minuto**: JavaScript faz ping para manter sessão ativa
+3. **A cada 20 segundos**: Lista de admins online é atualizada
+4. **Limpeza automática**: Sessões inativas há mais de 10 minutos são removidas
+
+#### 🛠️ **Para aplicar em outras páginas do dashboard:**
+
+Adicione no início de cada arquivo PHP do dashboard:
+
+```php
+// Incluir session tracker (APÓS includes de sessão e conexão)
+require_once '../session-tracker.php';
+```
+
+**Exemplo para index.php:**
+
+```php
+<?php
+session_start();
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: login.php');
+    exit();
+}
+
+require_once '../../../PHP/conexao.php';
+require_once '../session-tracker.php'; // ← ADICIONAR ESTA LINHA
+?>
+```
+
+#### 📊 **Tabela criada automaticamente:**
+
+```sql
+CREATE TABLE admin_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    session_id VARCHAR(255) NOT NULL,
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    INDEX idx_user_activity (user_id, last_activity),
+    INDEX idx_session (session_id),
+    UNIQUE KEY unique_user_session (user_id, session_id)
+);
+```
+
+#### 🎯 **Resultado:**
+
+- ✅ Apenas admins **realmente logados** aparecem online
+- ✅ Detecção automática de logout/inatividade
+- ✅ Sistema escalável para múltiplas páginas
+- ✅ Limpeza automática de sessões expiradas
+
+---
+
+## 🎯 **API Endpoints Disponíveis**
+
+### **Chat Cliente**
+
+```javascript
+// Iniciar nova conversa
+POST sistema.php?api=1&endpoint=client&action=start_conversation
+{
+  "nome": "Cliente",
+  "email": "cliente@email.com",
+  "mensagem": "Preciso de ajuda"
+}
+
+// Enviar mensagem
+POST sistema.php?api=1&endpoint=client&action=send_message
+{
+  "conversa_id": 123,
+  "mensagem": "Nova mensagem"
+}
+```
+
+### **Chat Admin**
+
+```javascript
+// Listar conversas com filtros
+GET sistema.php?api=1&endpoint=admin&action=get_conversations&filter=unread
+
+// Obter mensagens de conversa
+GET sistema.php?api=1&endpoint=admin&action=get_messages&conversa_id=123
+
+// Enviar resposta admin
+POST sistema.php?api=1&endpoint=admin&action=send_admin_message
+{
+  "conversa_id": 123,
+  "mensagem": "Resposta do administrador"
+}
+
+// Marcar como não lida
+POST sistema.php?api=1&endpoint=admin&action=marcarComoNaoLida
+{
+  "conversa_id": 123
+}
+
+// Deletar conversa
+POST sistema.php?api=1&endpoint=admin&action=deletarConversa
+{
+  "conversa_id": 123
+}
+
+// Escalar para humano
+POST sistema.php?api=1&endpoint=admin&action=escalar_conversa
+{
+  "conversa_id": 123
+}
+```
+
+### **Sistema de Contadores**
+
+```javascript
+// Contador em tempo real
+GET sistema.php?api=1&endpoint=admin&action=get_message_count&filter=unread
+// Retorna: {"count": 5, "filter": "unread"}
+```
+
+### **Detecção de Admins Online**
+
+```javascript
+// Buscar administradores online
+GET menssage.php?action=buscar_administradores_online
+// Retorna: [{"nome": "João Silva", "email": "joao@email.com", "ultimo_acesso": "2026-01-30 15:30:00"}]
+
+// Ping para manter sessão ativa
+POST menssage.php?action=ping_session
+```
+
+---
+
+## 📋 **Sistema de Logs**
+
+### **🔍 Auditoria Completa:**
+
+- ✅ **Todas as ações** são registradas automaticamente
+- ✅ **Quem fez**, **quando** e **o que mudou**
+- ✅ **Valores antes/depois** para alterações
+- ✅ **IP do usuário** e timestamp brasileiro
+
+### **📊 Visualização de Logs:**
+
+- 🔍 **Pesquisa avançada**: Nome, ação, IP, data
+- 📄 **Paginação inteligente**: 20 itens por página
+- 📥 **Export CSV**: Download de relatórios
+- 🗑 **Exclusão seletiva**: Limpar logs antigos
+
+### **Exemplos de Logs:**
+
+```
+João alterou preço do produto Notebook de R$ 2.500,00 para R$ 2.300,00
+Maria excluiu usuário Carlos Silva (email: carlos@email.com)
+Admin criou produto Smartphone Galaxy (categoria: eletrônicos)
+```
 
 ### **📋 Logs de Segurança:**
 
