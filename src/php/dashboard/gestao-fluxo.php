@@ -1,0 +1,913 @@
+<?php
+session_start();
+// Verificar se está logado
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../../../PHP/login.php');
+    exit();
+}
+
+require_once '../../../PHP/conexao.php';
+require_once 'helper-contador.php';
+require_once '../auto_log.php';
+
+// Criar tabela status_fluxo se não existir
+if ($conexao) {
+    $createTableQuery = "CREATE TABLE IF NOT EXISTS status_fluxo (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        cor_hex VARCHAR(7) NOT NULL DEFAULT '#ff00d4',
+        baixa_estoque TINYINT(1) DEFAULT 0,
+        bloquear_edicao TINYINT(1) DEFAULT 0,
+        gerar_logistica TINYINT(1) DEFAULT 0,
+        notificar TINYINT(1) DEFAULT 0,
+        mensagem_template TEXT,
+        ordem INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )";
+    
+    mysqli_query($conexao, $createTableQuery);
+    
+    // Verificar se há registros, se não, inserir alguns padrão
+    $checkRecords = mysqli_query($conexao, "SELECT COUNT(*) as total FROM status_fluxo");
+    if ($checkRecords) {
+        $row = mysqli_fetch_assoc($checkRecords);
+        if ($row['total'] == 0) {
+            $defaultStatuses = [
+                ['nome' => 'Pedido Recebido', 'cor_hex' => '#ff00d4', 'ordem' => 1, 'notificar' => 1, 'mensagem_template' => 'Olá {cliente}! Recebemos seu pedido #{id_pedido}. Em breve você receberá mais atualizações. Obrigado por escolher nossa loja!'],
+                ['nome' => 'Pagamento Confirmado', 'cor_hex' => '#41f1b6', 'ordem' => 2, 'notificar' => 1, 'mensagem_template' => 'Ótima notícia, {cliente}! Seu pagamento do pedido #{id_pedido} foi confirmado. Agora vamos preparar seus produtos para envio.'],
+                ['nome' => 'Em Preparação', 'cor_hex' => '#ffbb55', 'ordem' => 3, 'baixa_estoque' => 1, 'bloquear_edicao' => 1, 'mensagem_template' => 'Seu pedido #{id_pedido} está sendo preparado com muito carinho. Em breve será enviado!'],
+                ['nome' => 'Enviado', 'cor_hex' => '#007bff', 'ordem' => 4, 'gerar_logistica' => 1, 'notificar' => 1, 'mensagem_template' => 'Pedido #{id_pedido} enviado! Código de rastreamento: {codigo_rastreio}. Acompanhe a entrega pelo link: {link_rastreio}'],
+                ['nome' => 'Entregue', 'cor_hex' => '#28a745', 'ordem' => 5, 'notificar' => 1, 'mensagem_template' => 'Parabéns {cliente}! Seu pedido #{id_pedido} foi entregue com sucesso. Esperamos que goste de seus produtos!']
+            ];
+            
+            foreach ($defaultStatuses as $status) {
+                $insertQuery = "INSERT INTO status_fluxo (nome, cor_hex, baixa_estoque, bloquear_edicao, gerar_logistica, notificar, mensagem_template, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = mysqli_prepare($conexao, $insertQuery);
+                if ($stmt) {
+                    mysqli_stmt_bind_param($stmt, "ssiiiisi", $status['nome'], $status['cor_hex'], $status['baixa_estoque'], $status['bloquear_edicao'], $status['gerar_logistica'], $status['notificar'], $status['mensagem_template'], $status['ordem']);
+                    mysqli_stmt_execute($stmt);
+                    mysqli_stmt_close($stmt);
+                }
+            }
+        }
+    }
+}
+
+$success_msg = '';
+$error_msg = '';
+
+// Recuperar mensagens da sessão (padrão PRG)
+if (isset($_SESSION['success_msg'])) {
+    $success_msg = $_SESSION['success_msg'];
+    unset($_SESSION['success_msg']);
+}
+
+if (isset($_SESSION['error_msg'])) {
+    $error_msg = $_SESSION['error_msg'];
+    unset($_SESSION['error_msg']);
+}
+
+// Processar ações POST
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    switch ($action) {
+        case 'add_status':
+            $nome = trim($_POST['nome'] ?? '');
+            $cor_hex = $_POST['cor_hex'] ?? '#ff00d4';
+            $baixa_estoque = isset($_POST['baixa_estoque']) ? 1 : 0;
+            $bloquear_edicao = isset($_POST['bloquear_edicao']) ? 1 : 0;
+            $gerar_logistica = isset($_POST['gerar_logistica']) ? 1 : 0;
+            $notificar = isset($_POST['notificar']) ? 1 : 0;
+            $mensagem_template = trim($_POST['mensagem_template'] ?? '');
+            
+            if ($nome) {
+                // Obter próxima ordem
+                $orderResult = mysqli_query($conexao, "SELECT MAX(ordem) as max_ordem FROM status_fluxo");
+                $nextOrder = 1;
+                if ($orderResult) {
+                    $row = mysqli_fetch_assoc($orderResult);
+                    $nextOrder = ($row['max_ordem'] ?? 0) + 1;
+                }
+                
+                $insertQuery = "INSERT INTO status_fluxo (nome, cor_hex, baixa_estoque, bloquear_edicao, gerar_logistica, notificar, mensagem_template, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = mysqli_prepare($conexao, $insertQuery);
+                if ($stmt) {
+                    mysqli_stmt_bind_param($stmt, "ssiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $mensagem_template, $nextOrder);
+                    if (mysqli_stmt_execute($stmt)) {
+                        registrar_log($conexao, "Adicionou novo status de fluxo: $nome");
+                        // Implementar PRG (Post-Redirect-Get) para evitar resubmissão
+                        $_SESSION['success_msg'] = "✅ Status '$nome' adicionado com sucesso!";
+                        header('Location: gestao-fluxo.php');
+                        exit();
+                    } else {
+                        $_SESSION['error_msg'] = "❌ Erro ao adicionar status: " . mysqli_error($conexao);
+                        header('Location: gestao-fluxo.php');
+                        exit();
+                    }
+                    mysqli_stmt_close($stmt);
+                }
+            } else {
+                $_SESSION['error_msg'] = "❌ Nome do status é obrigatório!";
+                header('Location: gestao-fluxo.php');
+                exit();
+            }
+            break;
+            
+        case 'update_status':
+            $id = intval($_POST['id'] ?? 0);
+            $nome = trim($_POST['nome'] ?? '');
+            $cor_hex = $_POST['cor_hex'] ?? '#ff00d4';
+            $baixa_estoque = isset($_POST['baixa_estoque']) ? 1 : 0;
+            $bloquear_edicao = isset($_POST['bloquear_edicao']) ? 1 : 0;
+            $gerar_logistica = isset($_POST['gerar_logistica']) ? 1 : 0;
+            $notificar = isset($_POST['notificar']) ? 1 : 0;
+            $mensagem_template = trim($_POST['mensagem_template'] ?? '');
+            
+            if ($id && $nome) {
+                $updateQuery = "UPDATE status_fluxo SET nome = ?, cor_hex = ?, baixa_estoque = ?, bloquear_edicao = ?, gerar_logistica = ?, notificar = ?, mensagem_template = ? WHERE id = ?";
+                $stmt = mysqli_prepare($conexao, $updateQuery);
+                if ($stmt) {
+                    mysqli_stmt_bind_param($stmt, "ssiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $mensagem_template, $id);
+                    if (mysqli_stmt_execute($stmt)) {
+                        registrar_log($conexao, "Atualizou status de fluxo: $nome (ID: $id)");
+                        // Implementar PRG (Post-Redirect-Get) para evitar resubmissão
+                        $_SESSION['success_msg'] = "✅ Status '$nome' atualizado com sucesso!";
+                        header('Location: gestao-fluxo.php');
+                        exit();
+                    } else {
+                        $_SESSION['error_msg'] = "❌ Erro ao atualizar status: " . mysqli_error($conexao);
+                        header('Location: gestao-fluxo.php');
+                        exit();
+                    }
+                    mysqli_stmt_close($stmt);
+                }
+            } else {
+                $_SESSION['error_msg'] = "❌ Dados inválidos para atualização!";
+                header('Location: gestao-fluxo.php');
+                exit();
+            }
+            break;
+            
+        case 'delete_status':
+            $id = intval($_POST['id'] ?? 0);
+            if ($id) {
+                // Buscar nome antes de deletar para o log
+                $nameQuery = "SELECT nome FROM status_fluxo WHERE id = ?";
+                $nameStmt = mysqli_prepare($conexao, $nameQuery);
+                $statusName = '';
+                if ($nameStmt) {
+                    mysqli_stmt_bind_param($nameStmt, "i", $id);
+                    mysqli_stmt_execute($nameStmt);
+                    $nameResult = mysqli_stmt_get_result($nameStmt);
+                    if ($nameRow = mysqli_fetch_assoc($nameResult)) {
+                        $statusName = $nameRow['nome'];
+                    }
+                    mysqli_stmt_close($nameStmt);
+                }
+                
+                $deleteQuery = "DELETE FROM status_fluxo WHERE id = ?";
+                $stmt = mysqli_prepare($conexao, $deleteQuery);
+                if ($stmt) {
+                    mysqli_stmt_bind_param($stmt, "i", $id);
+                    if (mysqli_stmt_execute($stmt)) {
+                        registrar_log($conexao, "Removeu status de fluxo: $statusName (ID: $id)");
+                        // Implementar PRG (Post-Redirect-Get) para evitar resubmissão
+                        $_SESSION['success_msg'] = "✅ Status removido com sucesso!";
+                        header('Location: gestao-fluxo.php');
+                        exit();
+                    } else {
+                        $_SESSION['error_msg'] = "❌ Erro ao remover status: " . mysqli_error($conexao);
+                        header('Location: gestao-fluxo.php');
+                        exit();
+                    }
+                    mysqli_stmt_close($stmt);
+                }
+            }
+            break;
+    }
+}
+
+// Buscar todos os status
+$statusList = [];
+try {
+    $result = mysqli_query($conexao, "SELECT * FROM status_fluxo ORDER BY ordem ASC, id ASC");
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $statusList[] = $row;
+        }
+    }
+} catch (Exception $e) {
+    error_log("Erro ao buscar status: " . $e->getMessage());
+}
+?>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../../css/dashboard.css" />
+    <link rel="stylesheet" href="../../css/dashboard-sections.css" />
+    <link rel="stylesheet" href="../../css/dashboard-cards.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp" rel="stylesheet" />
+    <title>Gestão de Fluxo - Dashboard</title>
+</head>
+
+<body>
+    <div class="container">
+        <aside>
+            <div class="top">
+                <div class="logo">
+                    <img src="../../../assets/images/Logodz.png" />
+                    <a href="index.php"><h2 class="danger">D&Z</h2></a>
+                </div>
+                <div class="close" id="close-btn">
+                    <span class="material-symbols-sharp">close</span>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <a href="index.php" id="dashboard-link">
+                    <span class="material-symbols-sharp">grid_view</span>
+                    <h3>Painel</h3>
+                </a>
+
+                <a href="customers.php" id="clientes-link">
+                    <span class="material-symbols-sharp">group</span>
+                    <h3>Clientes</h3>
+                </a>
+
+                <a href="orders.php" id="pedidos-link">
+                    <span class="material-symbols-sharp">Orders</span>
+                    <h3>Pedidos</h3>
+                </a>
+
+                <a href="analytics.php" id="graficos-link">
+                    <span class="material-symbols-sharp">Insights</span>
+                    <h3>Gráficos</h3>
+                </a>
+
+                <a href="menssage.php" id="mensagens-link">
+                    <span class="material-symbols-sharp">Mail</span>
+                    <h3>Mensagens</h3>
+                    <span class="message-count"><?php echo $nao_lidas; ?></span>
+                </a>
+
+                <a href="products.php" id="produtos-link">
+                    <span class="material-symbols-sharp">Inventory</span>
+                    <h3>Produtos</h3>
+                </a>
+
+                <a href="gestao-fluxo.php" id="gestao-fluxo-link" class="active">
+                    <span class="material-symbols-sharp">account_tree</span>
+                    <h3>Gestão de Fluxo</h3>
+                </a>
+
+                <div class="menu-item-container">
+                    <a href="geral.php" id="configuracoes-link" class="menu-item-with-submenu">
+                        <span class="material-symbols-sharp">Settings</span>
+                        <h3>Configurações</h3>
+                    </a>
+                    
+                    <div class="submenu">
+                        <a href="geral.php">
+                            <span class="material-symbols-sharp">tune</span>
+                            <h3>Geral</h3>
+                        </a>
+                        <a href="pagamentos.php">
+                            <span class="material-symbols-sharp">payments</span>
+                            <h3>Pagamentos</h3>
+                        </a>
+                        <a href="frete.php">
+                            <span class="material-symbols-sharp">local_shipping</span>
+                            <h3>Frete</h3>
+                        </a>
+                        <a href="automacao.php">
+                            <span class="material-symbols-sharp">automation</span>
+                            <h3>Automação</h3>
+                        </a>
+                        <a href="metricas.php">
+                            <span class="material-symbols-sharp">analytics</span>
+                            <h3>Métricas</h3>
+                        </a>
+                        <a href="settings.php">
+                            <span class="material-symbols-sharp">group</span>
+                            <h3>Usuários</h3>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="revendedores.php">
+                    <span class="material-symbols-sharp">handshake</span>
+                    <h3>Revendedores</h3>
+                </a>
+
+                <a href="../../../PHP/logout.php">
+                    <span class="material-symbols-sharp">Logout</span>
+                    <h3>Sair</h3>
+                </a>
+            </div>
+        </aside>
+
+        <!----------FINAL ASIDE------------>
+        <main>
+            <h1>Gestão de Fluxo</h1>
+
+            <!-- Header com botão adicionar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
+                <div class="date">
+                    <span style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="material-symbols-sharp">account_tree</span>
+                        Status de Pedidos
+                    </span>
+                </div>
+                <button onclick="openAddModal()" style="background: var(--color-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                    <span class="material-symbols-sharp">add</span>
+                    Adicionar Novo Status
+                </button>
+            </div>
+
+            <!-- Mensagens de feedback -->
+            <?php if ($success_msg): ?>
+                <div style="background: var(--color-white); border: 2px solid var(--color-success); color: var(--color-success); padding: 1rem; border-radius: var(--card-border-radius); margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="material-symbols-sharp">check_circle</span>
+                    <?= $success_msg ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($error_msg): ?>
+                <div style="background: var(--color-white); border: 2px solid var(--color-danger); color: var(--color-danger); padding: 1rem; border-radius: var(--card-border-radius); margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="material-symbols-sharp">error</span>
+                    <?= $error_msg ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Lista de Status em Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+                <?php foreach ($statusList as $status): ?>
+                    <div class="status-card" style="background: var(--color-white); border-radius: var(--card-border-radius); padding: var(--card-padding); box-shadow: var(--box-shadow); position: relative;">
+                        <!-- Header do Card -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div style="width: 16px; height: 16px; border-radius: 50%; background: <?= $status['cor_hex'] ?>;"></div>
+                                <h3 style="margin: 0; color: var(--color-dark); font-size: 1.2rem;"><?= htmlspecialchars($status['nome']) ?></h3>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button 
+                                    class="edit-status-btn"
+                                    data-id="<?= $status['id'] ?>"
+                                    data-nome="<?= htmlspecialchars($status['nome']) ?>"
+                                    data-cor="<?= $status['cor_hex'] ?>"
+                                    data-baixa-estoque="<?= $status['baixa_estoque'] ?>"
+                                    data-bloquear-edicao="<?= $status['bloquear_edicao'] ?>"
+                                    data-gerar-logistica="<?= $status['gerar_logistica'] ?>"
+                                    data-notificar="<?= $status['notificar'] ?>"
+                                    data-template="<?= htmlspecialchars($status['mensagem_template']) ?>"
+                                    style="background: var(--color-primary); color: white; border: none; padding: 0.5rem; border-radius: var(--border-radius-1); cursor: pointer; display: flex; align-items: center;">
+                                    <span class="material-symbols-sharp" style="font-size: 1rem;">edit</span>
+                                </button>
+                                <button onclick="deleteStatus(<?= $status['id'] ?>, '<?= addslashes($status['nome']) ?>')" style="background: var(--color-danger); color: white; border: none; padding: 0.5rem; border-radius: var(--border-radius-1); cursor: pointer; display: flex; align-items: center;">
+                                    <span class="material-symbols-sharp" style="font-size: 1rem;">delete</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Badge Preview -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <span style="padding: 0.5rem 1rem; background: <?= $status['cor_hex'] ?>; color: white; border-radius: var(--border-radius-2); font-size: 0.85rem; font-weight: 600;">
+                                <?= htmlspecialchars($status['nome']) ?>
+                            </span>
+                        </div>
+
+                        <!-- Regras de Negócio -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: var(--color-dark); font-size: 0.9rem; font-weight: 600;">REGRAS DE NEGÓCIO</h4>
+                            <div style="display: grid; gap: 0.5rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= $status['baixa_estoque'] ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
+                                        <?= $status['baixa_estoque'] ? 'check_circle' : 'radio_button_unchecked' ?>
+                                    </span>
+                                    <span style="font-size: 0.85rem; color: var(--color-dark);">Baixar Estoque</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= $status['bloquear_edicao'] ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
+                                        <?= $status['bloquear_edicao'] ? 'check_circle' : 'radio_button_unchecked' ?>
+                                    </span>
+                                    <span style="font-size: 0.85rem; color: var(--color-dark);">Bloquear Edição do Pedido</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= $status['gerar_logistica'] ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
+                                        <?= $status['gerar_logistica'] ? 'check_circle' : 'radio_button_unchecked' ?>
+                                    </span>
+                                    <span style="font-size: 0.85rem; color: var(--color-dark);">Gerar Logística (Melhor Envio)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= $status['notificar'] ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
+                                        <?= $status['notificar'] ? 'check_circle' : 'radio_button_unchecked' ?>
+                                    </span>
+                                    <span style="font-size: 0.85rem; color: var(--color-dark);">Notificação Automática</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Template de Mensagem -->
+                        <?php if ($status['notificar'] && $status['mensagem_template']): ?>
+                            <div style="margin-bottom: 1rem;">
+                                <h4 style="margin-bottom: 0.5rem; color: var(--color-dark); font-size: 0.9rem; font-weight: 600;">TEMPLATE DE MENSAGEM</h4>
+                                <div style="background: var(--color-background); padding: 0.75rem; border-radius: var(--border-radius-1); border-left: 4px solid <?= $status['cor_hex'] ?>; font-size: 0.8rem; color: var(--color-dark); line-height: 1.4;">
+                                    <?= nl2br(htmlspecialchars($status['mensagem_template'])) ?>
+                                </div>
+                                <small style="color: var(--color-info-dark); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                                    Shortcodes disponíveis: {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}
+                                </small>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+
+                <?php if (empty($statusList)): ?>
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--color-white); border-radius: var(--card-border-radius); box-shadow: var(--box-shadow);">
+                        <span class="material-symbols-sharp" style="font-size: 4rem; color: var(--color-info-dark); margin-bottom: 1rem; display: block;">account_tree</span>
+                        <h3 style="color: var(--color-dark); margin-bottom: 0.5rem;">Nenhum Status Configurado</h3>
+                        <p style="color: var(--color-info-dark); margin-bottom: 1.5rem;">Adicione seu primeiro status para começar a gerenciar o fluxo de pedidos.</p>
+                        <button onclick="openAddModal()" style="background: var(--color-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                            <span class="material-symbols-sharp">add</span>
+                            Adicionar Primeiro Status
+                        </button>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </main>
+
+        <!----------FINAL MAIN------------>
+        <div class="right">
+            <div class="top">
+                <button id="menu-btn">
+                    <span class="material-symbols-sharp">menu</span>
+                </button>
+                <div class="theme-toggler">
+                    <span class="material-symbols-sharp active">light_mode</span>
+                    <span class="material-symbols-sharp">dark_mode</span>
+                </div>
+                <div class="profile">
+                    <div class="info">
+                        <p>Olá, <b><?php echo isset($_SESSION['usuario_nome']) ? $_SESSION['usuario_nome'] : 'Usuário'; ?></b></p>
+                        <small class="text-muted">Administrador</small>
+                    </div>
+                    <div class="profile-photo">
+                        <img src="../../../assets/images/logo_redondo.png" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Adicionar/Editar Status -->
+    <div id="statusModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: var(--color-white); border-radius: var(--card-border-radius); padding: 2rem; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 id="modalTitle" style="color: var(--color-dark); margin: 0;">Adicionar Novo Status</h2>
+                <button onclick="closeModal()" style="background: none; border: none; cursor: pointer; color: var(--color-dark); font-size: 1.5rem;">
+                    <span class="material-symbols-sharp">close</span>
+                </button>
+            </div>
+
+            <form id="statusForm" method="POST">
+                <input type="hidden" name="action" value="add_status" id="formAction">
+                <input type="hidden" name="id" value="" id="statusId">
+
+                <!-- Nome do Status -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Nome do Status *</label>
+                    <input type="text" name="nome" id="statusNome" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-info-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 1rem;" placeholder="Ex: Pago, Enviado, Entregue...">
+                </div>
+
+                <!-- Cor do Status -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Cor do Status</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="color" name="cor_hex" id="statusCor" value="#ff00d4" style="width: 60px; height: 40px; border: none; border-radius: var(--border-radius-1); cursor: pointer;">
+                        <span id="corPreview" style="padding: 0.5rem 1rem; background: #ff00d4; color: white; border-radius: var(--border-radius-2); font-size: 0.85rem; font-weight: 600;">Preview</span>
+                    </div>
+                </div>
+
+                <!-- Regras de Negócio -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.75rem;">Regras de Negócio</label>
+                    <div style="display: grid; gap: 0.75rem;">
+                        <!-- Baixar Estoque -->
+                        <div class="regra-negocio" data-checkbox="baixaEstoque" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
+                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
+                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Baixar Estoque automaticamente</div>
+                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Subtrai automaticamente do inventário quando o pedido atingir este status</small>
+                            </div>
+                            <input type="checkbox" name="baixa_estoque" id="baixaEstoque" style="display: none;">
+                        </div>
+
+                        <!-- Bloquear Edição -->
+                        <div class="regra-negocio" data-checkbox="bloquearEdicao" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
+                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
+                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Bloquear edição do pedido</div>
+                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Impede qualquer modificação no pedido após atingir este status</small>
+                            </div>
+                            <input type="checkbox" name="bloquear_edicao" id="bloquearEdicao" style="display: none;">
+                        </div>
+
+                        <!-- Gerar Logística -->
+                        <div class="regra-negocio" data-checkbox="gerarLogistica" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
+                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
+                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Gerar logística (Melhor Envio)</div>
+                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Habilita botões de rastreio e integração com transportadoras</small>
+                            </div>
+                            <input type="checkbox" name="gerar_logistica" id="gerarLogistica" style="display: none;">
+                        </div>
+
+                        <!-- Ativar Notificação -->
+                        <div class="regra-negocio" data-checkbox="notificar" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
+                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
+                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Ativar notificação automática</div>
+                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Envia mensagem automaticamente via WhatsApp/E-mail</small>
+                            </div>
+                            <input type="checkbox" name="notificar" id="notificar" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template de Mensagem -->
+                <div id="mensagemTemplateDiv" style="margin-bottom: 1.5rem; display: none;">
+                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Template de Mensagem (WhatsApp/E-mail)</label>
+                    <textarea name="mensagem_template" id="mensagemTemplate" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-info-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 0.9rem; resize: vertical;" placeholder="Ex: Olá {cliente}! Seu pedido #{id_pedido} mudou para {status}..."></textarea>
+                    <small style="color: var(--color-info-dark); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                        Shortcodes disponíveis: {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}
+                    </small>
+                </div>
+
+                <!-- Botões -->
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" onclick="closeModal()" style="background: var(--color-light); color: var(--color-dark); border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; font-weight: 600;">
+                        Cancelar
+                    </button>
+                    <button type="submit" style="background: var(--color-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; font-weight: 600;">
+                        <span id="submitText">Adicionar Status</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../../js/dashboard.js"></script>
+    <script>
+        // Aplicar tema salvo e configurar event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 DOM carregado, inicializando Gestão de Fluxo...');
+            
+            const savedTheme = localStorage.getItem('darkTheme');
+            if (savedTheme === 'true') {
+                document.body.classList.add('dark-theme-variables');
+            }
+            
+            // Configurar event listeners para botões de editar
+            const editButtons = document.querySelectorAll('.edit-status-btn');
+            console.log(`📝 Encontrados ${editButtons.length} botões de editar`);
+            
+            editButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🎯 Botão de editar clicado!', this);
+                    editStatus(this);
+                });
+            });
+
+            // Configurar event listeners para checkboxes customizados
+            setupCustomCheckboxes();
+            
+            // Inicializar toggle na página load
+            toggleMensagemTemplate();
+        });
+
+        // Função para configurar os checkboxes customizados
+        function setupCustomCheckboxes() {
+            const regraNegocio = document.querySelectorAll('.regra-negocio');
+            
+            regraNegocio.forEach(regra => {
+                regra.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const checkboxId = this.dataset.checkbox;
+                    const checkbox = document.getElementById(checkboxId);
+                    const customCheckbox = this.querySelector('.custom-checkbox');
+                    const checkIcon = customCheckbox.querySelector('span');
+                    
+                    if (checkbox) {
+                        // Toggle do checkbox
+                        checkbox.checked = !checkbox.checked;
+                        
+                        console.log(`🔄 ${checkboxId} alterado para: ${checkbox.checked}`);
+                        
+                        // Atualizar visual
+                        updateCustomCheckboxVisual(this, checkbox.checked);
+                        
+                        // Disparar evento change para o toggle de mensagem
+                        const changeEvent = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(changeEvent);
+                        
+                        // Se for o checkbox de notificação, atualizar template
+                        if (checkboxId === 'notificar') {
+                            toggleMensagemTemplate();
+                        }
+                    }
+                });
+            });
+        }
+
+        // Função para atualizar o visual dos checkboxes customizados
+        function updateCustomCheckboxVisual(regraElement, isChecked) {
+            console.log(`🎨 updateCustomCheckboxVisual chamado para:`, regraElement.dataset.checkbox, isChecked);
+            
+            const customCheckbox = regraElement.querySelector('.custom-checkbox');
+            const checkIcon = customCheckbox.querySelector('span');
+            
+            console.log(`🔍 Elementos encontrados - customCheckbox:`, customCheckbox, `checkIcon:`, checkIcon);
+            
+            if (isChecked) {
+                // Estado marcado - rosa
+                regraElement.style.borderColor = 'var(--color-primary)';
+                regraElement.style.backgroundColor = 'rgba(255, 0, 212, 0.05)';
+                customCheckbox.style.backgroundColor = 'var(--color-primary)';
+                customCheckbox.style.borderColor = 'var(--color-primary)';
+                checkIcon.style.color = 'white';
+                checkIcon.style.fontWeight = 'bold';
+                console.log(`✅ Visual ativado (rosa) para ${regraElement.dataset.checkbox}`);
+            } else {
+                // Estado desmarcado - padrão
+                regraElement.style.borderColor = 'var(--color-info-light)';
+                regraElement.style.backgroundColor = 'var(--color-white)';
+                customCheckbox.style.backgroundColor = 'var(--color-white)';
+                customCheckbox.style.borderColor = 'var(--color-info-light)';
+                checkIcon.style.color = 'transparent';
+                checkIcon.style.fontWeight = 'normal';
+                console.log(`⚪ Visual desativado (padrão) para ${regraElement.dataset.checkbox}`);
+            }
+        }
+
+        // Funções do Modal
+        function openAddModal() {
+            console.log('➕ Abrindo modal para adicionar');
+            resetModalForm();
+            document.getElementById('modalTitle').textContent = 'Adicionar Novo Status';
+            document.getElementById('formAction').value = 'add_status';
+            document.getElementById('statusId').value = '';
+            document.getElementById('submitText').textContent = 'Adicionar Status';
+            document.getElementById('statusModal').style.display = 'flex';
+        }
+
+        function editStatus(button) {
+            console.log('🔧 editStatus iniciado', button);
+            
+            try {
+                // Reset do formulário primeiro e aguardar
+                resetModalForm();
+                
+                // Aguardar um pouco para garantir que o reset foi aplicado
+                setTimeout(() => {
+                    // Pegar dados dos data attributes
+                    const statusData = {
+                        id: button.getAttribute('data-id'),
+                        nome: button.getAttribute('data-nome'),
+                        cor: button.getAttribute('data-cor'),
+                        baixaEstoque: button.getAttribute('data-baixa-estoque') === '1',
+                        bloquearEdicao: button.getAttribute('data-bloquear-edicao') === '1',
+                        gerarLogistica: button.getAttribute('data-gerar-logistica') === '1',
+                        notificar: button.getAttribute('data-notificar') === '1',
+                        template: button.getAttribute('data-template') || ''
+                    };
+                    
+                    console.log('📊 Dados do status carregados:', statusData);
+                    
+                    // Configurar modal para edição
+                    document.getElementById('modalTitle').textContent = 'Editar Status';
+                    document.getElementById('formAction').value = 'update_status';
+                    document.getElementById('statusId').value = statusData.id;
+                    document.getElementById('submitText').textContent = 'Atualizar Status';
+                    
+                    // Preencher campos básicos
+                    document.getElementById('statusNome').value = statusData.nome;
+                    document.getElementById('statusCor').value = statusData.cor;
+                    
+                    // Aguardar mais um pouco antes de configurar checkboxes
+                    setTimeout(() => {
+                        console.log('🔄 Aplicando configurações dos checkboxes...');
+                        
+                        // Configurar checkboxes com verificação robusta
+                        setCheckboxValue('baixaEstoque', statusData.baixaEstoque);
+                        setCheckboxValue('bloquearEdicao', statusData.bloquearEdicao);
+                        setCheckboxValue('gerarLogistica', statusData.gerarLogistica);
+                        setCheckboxValue('notificar', statusData.notificar);
+                        
+                        // Preencher template
+                        const templateField = document.getElementById('mensagemTemplate');
+                        if (templateField) {
+                            templateField.value = statusData.template;
+                        }
+                        
+                        // Atualizar preview e toggle
+                        updateColorPreview(statusData.cor, statusData.nome);
+                        
+                        // Aguardar antes de fazer toggle
+                        setTimeout(() => {
+                            toggleMensagemTemplate();
+                        }, 100);
+                        
+                        console.log('✅ Todos os campos configurados');
+                        
+                    }, 100);
+                    
+                    // Mostrar modal
+                    document.getElementById('statusModal').style.display = 'flex';
+                    
+                }, 100);
+                
+            } catch (error) {
+                console.error('❌ Erro ao editar status:', error);
+                alert('Erro ao carregar dados do status. Tente novamente.');
+            }
+        }
+
+        // Função auxiliar para configurar checkboxes de forma robusta
+        function setCheckboxValue(checkboxId, value) {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                // Forçar o valor antes de marcar
+                checkbox.checked = false;
+                
+                // Aguardar um pouco e definir o valor correto
+                setTimeout(() => {
+                    checkbox.checked = value;
+                    console.log(`✓ ${checkboxId}: ${value} (${checkbox.checked})`);
+                    
+                    // Encontrar o elemento de regra correspondente
+                    const regraElement = document.querySelector(`[data-checkbox="${checkboxId}"]`);
+                    if (regraElement) {
+                        updateCustomCheckboxVisual(regraElement, value);
+                        console.log(`🎨 Visual atualizado para ${checkboxId}: ${value}`);
+                    }
+                    
+                    // Disparar evento para garantir que outras funcionalidades sejam ativadas
+                    const changeEvent = new Event('change', { bubbles: true });
+                    checkbox.dispatchEvent(changeEvent);
+                    
+                }, 50);
+                
+            } else {
+                console.warn(`⚠️ Checkbox ${checkboxId} não encontrado`);
+            }
+        }
+
+        // Função para limpar/resetar o formulário do modal
+        function resetModalForm() {
+            console.log('🧹 Limpando formulário do modal');
+            
+            // Limpar campos básicos
+            document.getElementById('statusNome').value = '';
+            document.getElementById('statusCor').value = '#ff00d4';
+            document.getElementById('statusId').value = '';
+            
+            // Desmarcar todos os checkboxes com força
+            const checkboxes = ['baixaEstoque', 'bloquearEdicao', 'gerarLogistica', 'notificar'];
+            checkboxes.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) {
+                    // Forçar desmarcação
+                    checkbox.checked = false;
+                    checkbox.removeAttribute('checked');
+                    
+                    // Resetar visual do checkbox customizado
+                    const regraElement = document.querySelector(`[data-checkbox="${id}"]`);
+                    if (regraElement) {
+                        updateCustomCheckboxVisual(regraElement, false);
+                    }
+                    
+                    console.log(`🧹 ${id} limpo`);
+                }
+            });
+            
+            // Limpar template
+            document.getElementById('mensagemTemplate').value = '';
+            
+            // Reset do preview
+            updateColorPreview('#ff00d4', 'Preview');
+            
+            // Esconder div de template
+            const templateDiv = document.getElementById('mensagemTemplateDiv');
+            if (templateDiv) {
+                templateDiv.style.display = 'none';
+            }
+            
+            console.log('✨ Reset do modal concluído');
+        }
+
+        function deleteStatus(id, nome) {
+            if (confirm(`Tem certeza que deseja excluir o status "${nome}"?\n\nEsta ação não pode ser desfeita.`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.style.display = 'none';
+                
+                const actionInput = document.createElement('input');
+                actionInput.name = 'action';
+                actionInput.value = 'delete_status';
+                
+                const idInput = document.createElement('input');
+                idInput.name = 'id';
+                idInput.value = id;
+                
+                form.appendChild(actionInput);
+                form.appendChild(idInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function closeModal() {
+            console.log('🚪 Fechando modal');
+            resetModalForm();
+            document.getElementById('statusModal').style.display = 'none';
+        }
+
+        // Fechar modal clicando no fundo
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('statusModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeModal();
+                    }
+                });
+            }
+        });
+
+        // Atualizar preview da cor em tempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusCor = document.getElementById('statusCor');
+            const statusNome = document.getElementById('statusNome');
+            
+            if (statusCor) {
+                statusCor.addEventListener('input', function() {
+                    const cor = this.value;
+                    const nome = statusNome ? statusNome.value || 'Preview' : 'Preview';
+                    updateColorPreview(cor, nome);
+                });
+            }
+            
+            if (statusNome) {
+                statusNome.addEventListener('input', function() {
+                    const nome = this.value || 'Preview';
+                    const cor = statusCor ? statusCor.value : '#ff00d4';
+                    updateColorPreview(cor, nome);
+                });
+            }
+        });
+
+        function updateColorPreview(cor, nome) {
+            const preview = document.getElementById('corPreview');
+            if (preview) {
+                preview.style.background = cor;
+                preview.textContent = nome;
+            }
+        }
+
+        // Toggle do template de mensagem com melhor controle
+        function toggleMensagemTemplate() {
+            const checkbox = document.getElementById('notificar');
+            const div = document.getElementById('mensagemTemplateDiv');
+            
+            if (checkbox && div) {
+                const shouldShow = checkbox.checked;
+                div.style.display = shouldShow ? 'block' : 'none';
+                console.log(`📧 Template de mensagem: ${shouldShow ? 'visível' : 'oculto'}`);
+            }
+        }
+
+        // Event listener para o checkbox de notificação
+        document.addEventListener('DOMContentLoaded', function() {
+            const notificarCheckbox = document.getElementById('notificar');
+            if (notificarCheckbox) {
+                notificarCheckbox.addEventListener('change', toggleMensagemTemplate);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+/* Estilos adicionais para Dashboard Cards e Gráfico */
+
+/* Grid de 3 colunas para os insights */
+main .insights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.6rem;
+}
+
+/* Canvas nos cards */
+main .insights .progress canvas {
+  width: 92px !important;
+  height: 92px !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Melhorias para os cards da sidebar - Design Moderno */
+.right .sales-analytics .item {
+  background: var(--color-white);
+  border-radius: 16px;
+  padding: 1.2rem;
+  margin-bottom: 0.8rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.right .sales-analytics .item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+  border-color: rgba(255, 0, 212, 0.2);
+}
+
+.right .sales-analytics .item .icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1.2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.right .sales-analytics .item .icon span {
+  font-size: 1.6rem;
+  color: var(--color-white);
+  font-weight: 500;
+}
+
+.right .sales-analytics .item.offline .icon {
+  background: red;
+}
+
+.right .sales-analytics .item.customers .icon {
+  background: orange;
+}
+
+.right .sales-analytics .item.online .icon {
+  background: darkgoldenrod;
+}
+
+.right .sales-analytics .item .right .info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  gap: 1rem;
+}
+
+.right .sales-analytics .item .right .info h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: var(--color-dark);
+  text-transform: none;
+  letter-spacing: 0.2px;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.right .sales-analytics .item .right .info small {
+  font-size: 0.8rem;
+  color: var(--color-info-dark);
+  line-height: 1.4;
+  font-weight: 400;
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.right .sales-analytics .item .right .info small .number {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-dark);
+  display: block;
+  margin-top: 0.5rem;
+  line-height: 1;
+}
+
+.right .sales-analytics .item .right h5 {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 0.4rem 0.9rem;
+  border-radius: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.right .sales-analytics .item .right {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  gap: 1rem;
+}
+
+.right .sales-analytics .item .right h3 {
+  display: none;
+}
+
+/* Container do gráfico */
+.chart-container {
+  background: var(--color-white);
+  padding: var(--card-padding);
+  border-radius: var(--card-border-radius);
+  margin-top: 2rem;
+  box-shadow: var(--box-shadow);
+  position: relative;
+  height: 320px;
+}
+
+.chart-container h2 {
+  margin-bottom: 1.5rem;
+  color: var(--color-dark);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.chart-container canvas {
+  max-width: 100%;
+  height: 220px !important;
+}
+
+/* Estilo para mensagem "nenhum pedido" */
+.no-orders {
+  text-align: center;
+  padding: 3rem 0;
+  color: var(--color-info-dark);
+}
+
+.no-orders span {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.no-orders p {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* Responsividade para insights com 3 cards */
+@media screen and (max-width: 1200px) {
+  main .insights {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 768px) {
+  main .insights {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-container {
+    height: 280px;
+  }
+
+  .chart-container canvas {
+    height: 180px !important;
+  }
+}
