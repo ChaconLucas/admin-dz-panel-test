@@ -20,6 +20,9 @@ if ($conexao) {
         bloquear_edicao TINYINT(1) DEFAULT 0,
         gerar_logistica TINYINT(1) DEFAULT 0,
         notificar TINYINT(1) DEFAULT 0,
+        estornar_estoque TINYINT(1) DEFAULT 0,
+        gerar_link_cobranca TINYINT(1) DEFAULT 0,
+        sla_horas INT DEFAULT 0,
         mensagem_template TEXT,
         ordem INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -27,6 +30,17 @@ if ($conexao) {
     )";
     
     mysqli_query($conexao, $createTableQuery);
+    
+    // Adicionar novas colunas se não existirem (para bancos existentes)
+    $alterQueries = [
+        "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS estornar_estoque TINYINT(1) DEFAULT 0",
+        "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS gerar_link_cobranca TINYINT(1) DEFAULT 0",
+        "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS sla_horas INT DEFAULT 0"
+    ];
+    
+    foreach ($alterQueries as $query) {
+        mysqli_query($conexao, $query);
+    }
     
     // Verificar se há registros, se não, inserir alguns padrão
     $checkRecords = mysqli_query($conexao, "SELECT COUNT(*) as total FROM status_fluxo");
@@ -80,6 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $bloquear_edicao = isset($_POST['bloquear_edicao']) ? 1 : 0;
             $gerar_logistica = isset($_POST['gerar_logistica']) ? 1 : 0;
             $notificar = isset($_POST['notificar']) ? 1 : 0;
+            $estornar_estoque = isset($_POST['estornar_estoque']) ? 1 : 0;
+            $gerar_link_cobranca = isset($_POST['gerar_link_cobranca']) ? 1 : 0;
+            $sla_horas = intval($_POST['sla_horas'] ?? 0);
             $mensagem_template = trim($_POST['mensagem_template'] ?? '');
             
             if ($nome) {
@@ -91,10 +108,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nextOrder = ($row['max_ordem'] ?? 0) + 1;
                 }
                 
-                $insertQuery = "INSERT INTO status_fluxo (nome, cor_hex, baixa_estoque, bloquear_edicao, gerar_logistica, notificar, mensagem_template, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $insertQuery = "INSERT INTO status_fluxo (nome, cor_hex, baixa_estoque, bloquear_edicao, gerar_logistica, notificar, estornar_estoque, gerar_link_cobranca, sla_horas, mensagem_template, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = mysqli_prepare($conexao, $insertQuery);
                 if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, "ssiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $mensagem_template, $nextOrder);
+                    mysqli_stmt_bind_param($stmt, "ssiiiiiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $estornar_estoque, $gerar_link_cobranca, $sla_horas, $mensagem_template, $nextOrder);
                     if (mysqli_stmt_execute($stmt)) {
                         registrar_log($conexao, "Adicionou novo status de fluxo: $nome");
                         // Implementar PRG (Post-Redirect-Get) para evitar resubmissão
@@ -123,13 +140,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $bloquear_edicao = isset($_POST['bloquear_edicao']) ? 1 : 0;
             $gerar_logistica = isset($_POST['gerar_logistica']) ? 1 : 0;
             $notificar = isset($_POST['notificar']) ? 1 : 0;
+            $estornar_estoque = isset($_POST['estornar_estoque']) ? 1 : 0;
+            $gerar_link_cobranca = isset($_POST['gerar_link_cobranca']) ? 1 : 0;
+            $sla_horas = intval($_POST['sla_horas'] ?? 0);
             $mensagem_template = trim($_POST['mensagem_template'] ?? '');
             
             if ($id && $nome) {
-                $updateQuery = "UPDATE status_fluxo SET nome = ?, cor_hex = ?, baixa_estoque = ?, bloquear_edicao = ?, gerar_logistica = ?, notificar = ?, mensagem_template = ? WHERE id = ?";
+                $updateQuery = "UPDATE status_fluxo SET nome = ?, cor_hex = ?, baixa_estoque = ?, bloquear_edicao = ?, gerar_logistica = ?, notificar = ?, estornar_estoque = ?, gerar_link_cobranca = ?, sla_horas = ?, mensagem_template = ? WHERE id = ?";
                 $stmt = mysqli_prepare($conexao, $updateQuery);
                 if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, "ssiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $mensagem_template, $id);
+                    mysqli_stmt_bind_param($stmt, "ssiiiiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $estornar_estoque, $gerar_link_cobranca, $sla_horas, $mensagem_template, $id);
                     if (mysqli_stmt_execute($stmt)) {
                         registrar_log($conexao, "Atualizou status de fluxo: $nome (ID: $id)");
                         // Implementar PRG (Post-Redirect-Get) para evitar resubmissão
@@ -363,6 +383,9 @@ try {
                                     data-bloquear-edicao="<?= $status['bloquear_edicao'] ?>"
                                     data-gerar-logistica="<?= $status['gerar_logistica'] ?>"
                                     data-notificar="<?= $status['notificar'] ?>"
+                                    data-estornar-estoque="<?= $status['estornar_estoque'] ?? 0 ?>"
+                                    data-gerar-link-cobranca="<?= $status['gerar_link_cobranca'] ?? 0 ?>"
+                                    data-sla-horas="<?= $status['sla_horas'] ?? 0 ?>"
                                     data-template="<?= htmlspecialchars($status['mensagem_template']) ?>"
                                     style="background: var(--color-primary); color: white; border: none; padding: 0.5rem; border-radius: var(--border-radius-1); cursor: pointer; display: flex; align-items: center;">
                                     <span class="material-symbols-sharp" style="font-size: 1rem;">edit</span>
@@ -391,6 +414,12 @@ try {
                                     <span style="font-size: 0.85rem; color: var(--color-dark);">Baixar Estoque</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= ($status['estornar_estoque'] ?? 0) ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
+                                        <?= ($status['estornar_estoque'] ?? 0) ? 'check_circle' : 'radio_button_unchecked' ?>
+                                    </span>
+                                    <span style="font-size: 0.85rem; color: var(--color-dark);">Estornar Estoque</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
                                     <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= $status['bloquear_edicao'] ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
                                         <?= $status['bloquear_edicao'] ? 'check_circle' : 'radio_button_unchecked' ?>
                                     </span>
@@ -403,11 +432,25 @@ try {
                                     <span style="font-size: 0.85rem; color: var(--color-dark);">Gerar Logística (Melhor Envio)</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= ($status['gerar_link_cobranca'] ?? 0) ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
+                                        <?= ($status['gerar_link_cobranca'] ?? 0) ? 'check_circle' : 'radio_button_unchecked' ?>
+                                    </span>
+                                    <span style="font-size: 0.85rem; color: var(--color-dark);">Gerar Link de Cobrança</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
                                     <span class="material-symbols-sharp" style="font-size: 1.2rem; color: <?= $status['notificar'] ? 'var(--color-success)' : 'var(--color-info-dark)' ?>;">
                                         <?= $status['notificar'] ? 'check_circle' : 'radio_button_unchecked' ?>
                                     </span>
                                     <span style="font-size: 0.85rem; color: var(--color-dark);">Notificação Automática</span>
                                 </div>
+                                <?php if (($status['sla_horas'] ?? 0) > 0): ?>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; padding: 0.5rem; background: rgba(255, 193, 7, 0.1); border-radius: var(--border-radius-1); border-left: 3px solid var(--color-warning);">
+                                        <span class="material-symbols-sharp" style="font-size: 1.2rem; color: var(--color-warning);">
+                                            schedule
+                                        </span>
+                                        <span style="font-size: 0.85rem; color: var(--color-dark); font-weight: 600;">SLA: <?= $status['sla_horas'] ?>h</span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -419,7 +462,7 @@ try {
                                     <?= nl2br(htmlspecialchars($status['mensagem_template'])) ?>
                                 </div>
                                 <small style="color: var(--color-info-dark); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-                                    Shortcodes disponíveis: {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}
+                                    Shortcodes disponíveis: {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}, {link_pagamento}, {nome_loja}, {data_estimada}
                                 </small>
                             </div>
                         <?php endif; ?>
@@ -543,6 +586,46 @@ try {
                             </div>
                             <input type="checkbox" name="notificar" id="notificar" style="display: none;">
                         </div>
+
+                        <!-- Estornar Estoque -->
+                        <div class="regra-negocio" data-checkbox="estornarEstoque" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
+                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
+                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Estornar Estoque</div>
+                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Se ativado, produtos deste status voltam ao inventário (ex: Devoluções)</small>
+                            </div>
+                            <input type="checkbox" name="estornar_estoque" id="estornarEstoque" style="display: none;">
+                        </div>
+
+                        <!-- Gerar Link de Cobrança -->
+                        <div class="regra-negocio" data-checkbox="gerarLinkCobranca" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
+                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
+                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">credit_card</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">
+                                    <span class="material-symbols-sharp" style="font-size: 16px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-success);">credit_card</span>
+                                    Gerar Link de Cobrança
+                                </div>
+                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Se ativado, habilita o shortcode {link_pagamento} no template</small>
+                            </div>
+                            <input type="checkbox" name="gerar_link_cobranca" id="gerarLinkCobranca" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prazo de SLA -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.75rem;">
+                        <span class="material-symbols-sharp" style="font-size: 16px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-warning);">schedule</span>
+                        Prazo de SLA (Alerta de Atraso)
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="number" name="sla_horas" id="slaHoras" min="0" max="720" value="0" style="width: 120px; padding: 0.75rem; border: 1px solid var(--color-info-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 1rem; text-align: center;" placeholder="0">
+                        <span style="color: var(--color-dark); font-weight: 600;">horas</span>
+                        <small style="color: var(--color-info-dark); font-size: 0.8rem; flex: 1;">Definir alerta quando pedido permanecer neste status por mais tempo que o especificado. (0 = desabilitado)</small>
                     </div>
                 </div>
 
@@ -551,7 +634,7 @@ try {
                     <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Template de Mensagem (WhatsApp/E-mail)</label>
                     <textarea name="mensagem_template" id="mensagemTemplate" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-info-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 0.9rem; resize: vertical;" placeholder="Ex: Olá {cliente}! Seu pedido #{id_pedido} mudou para {status}..."></textarea>
                     <small style="color: var(--color-info-dark); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-                        Shortcodes disponíveis: {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}
+                        <strong>Shortcodes disponíveis:</strong> {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}, {link_pagamento}, {nome_loja}, {data_estimada}
                     </small>
                 </div>
 
@@ -688,11 +771,14 @@ try {
                     const statusData = {
                         id: button.getAttribute('data-id'),
                         nome: button.getAttribute('data-nome'),
-                        cor: button.getAttribute('data-cor'),
+                        cor: button.getAttribute('data-cor') || '#ff007f', // Validação de cor padrão
                         baixaEstoque: button.getAttribute('data-baixa-estoque') === '1',
                         bloquearEdicao: button.getAttribute('data-bloquear-edicao') === '1',
                         gerarLogistica: button.getAttribute('data-gerar-logistica') === '1',
                         notificar: button.getAttribute('data-notificar') === '1',
+                        estornarEstoque: button.getAttribute('data-estornar-estoque') === '1',
+                        gerarLinkCobranca: button.getAttribute('data-gerar-link-cobranca') === '1',
+                        slaHoras: parseInt(button.getAttribute('data-sla-horas')) || 0,
                         template: button.getAttribute('data-template') || ''
                     };
                     
@@ -704,19 +790,24 @@ try {
                     document.getElementById('statusId').value = statusData.id;
                     document.getElementById('submitText').textContent = 'Atualizar Status';
                     
-                    // Preencher campos básicos
+                    // Preencher campos básicos com validação de cor
                     document.getElementById('statusNome').value = statusData.nome;
-                    document.getElementById('statusCor').value = statusData.cor;
+                    const corInput = document.getElementById('statusCor');
+                    const corValida = statusData.cor && statusData.cor.match(/^#[0-9A-Fa-f]{6}$/) ? statusData.cor : '#ff007f';
+                    corInput.value = corValida;
+                    document.getElementById('slaHoras').value = statusData.slaHoras;
                     
                     // Aguardar mais um pouco antes de configurar checkboxes
                     setTimeout(() => {
                         console.log('🔄 Aplicando configurações dos checkboxes...');
                         
-                        // Configurar checkboxes com verificação robusta
+                        // Configurar checkboxes com verificação robusta - sincronia de toggles garantida
                         setCheckboxValue('baixaEstoque', statusData.baixaEstoque);
                         setCheckboxValue('bloquearEdicao', statusData.bloquearEdicao);
                         setCheckboxValue('gerarLogistica', statusData.gerarLogistica);
                         setCheckboxValue('notificar', statusData.notificar);
+                        setCheckboxValue('estornarEstoque', statusData.estornarEstoque);
+                        setCheckboxValue('gerarLinkCobranca', statusData.gerarLinkCobranca);
                         
                         // Preencher template
                         const templateField = document.getElementById('mensagemTemplate');
@@ -787,7 +878,7 @@ try {
             document.getElementById('statusId').value = '';
             
             // Desmarcar todos os checkboxes com força
-            const checkboxes = ['baixaEstoque', 'bloquearEdicao', 'gerarLogistica', 'notificar'];
+            const checkboxes = ['baixaEstoque', 'bloquearEdicao', 'gerarLogistica', 'notificar', 'estornarEstoque', 'gerarLinkCobranca'];
             checkboxes.forEach(id => {
                 const checkbox = document.getElementById(id);
                 if (checkbox) {
@@ -805,8 +896,9 @@ try {
                 }
             });
             
-            // Limpar template
+            // Limpar template e SLA
             document.getElementById('mensagemTemplate').value = '';
+            document.getElementById('slaHoras').value = '0';
             
             // Reset do preview
             updateColorPreview('#ff00d4', 'Preview');
@@ -884,8 +976,10 @@ try {
         function updateColorPreview(cor, nome) {
             const preview = document.getElementById('corPreview');
             if (preview) {
-                preview.style.background = cor;
-                preview.textContent = nome;
+                // Validação de cor para evitar erros de formato hexadecimal
+                const corValida = cor && cor.match(/^#[0-9A-Fa-f]{6}$/) ? cor : '#ff007f';
+                preview.style.background = corValida;
+                preview.textContent = nome || 'Preview';
             }
         }
 
