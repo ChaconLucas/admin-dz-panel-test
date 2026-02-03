@@ -40,11 +40,60 @@ function sincronizarEstoquePai($conexao, $produto_id = null) {
         
         $estoque_total = $total_data['total_estoque'] ?: 0;
         
-        // Atualizar produto pai
-        $update_query = "UPDATE produtos SET estoque = ? WHERE id = ?";
+        // Atualizar produto pai com estoque e status inteligente
+        $status = ($estoque_total == 0) ? 'inativo' : 'ativo';
+        $update_query = "UPDATE produtos SET estoque = ?, status = ? WHERE id = ?";
         $update_stmt = mysqli_prepare($conexao, $update_query);
-        mysqli_stmt_bind_param($update_stmt, "ii", $estoque_total, $id);
+        mysqli_stmt_bind_param($update_stmt, "isi", $estoque_total, $status, $id);
         mysqli_stmt_execute($update_stmt);
+        
+        // Log da alteração automática de status se necessário
+        if ($estoque_total == 0) {
+            $name_query = "SELECT nome FROM produtos WHERE id = ?";
+            $name_stmt = mysqli_prepare($conexao, $name_query);
+            mysqli_stmt_bind_param($name_stmt, "i", $id);
+            mysqli_stmt_execute($name_stmt);
+            $name_result = mysqli_stmt_get_result($name_stmt);
+            $name_data = mysqli_fetch_assoc($name_result);
+            $produto_nome = $name_data['nome'] ?? "ID: $id";
+            
+            registrar_log_alteracao($conexao, 'status_automatico', $produto_nome, 'status', 'ativo', 'inativo - estoque zerado');
+        }
+    }
+}
+
+// Função para aplicar inteligência de estoque em produto individual
+function aplicarInteligenciaEstoque($conexao, $produto_id, $novo_estoque) {
+    // Verificar estoque atual
+    $current_query = "SELECT status, nome FROM produtos WHERE id = ?";
+    $current_stmt = mysqli_prepare($conexao, $current_query);
+    mysqli_stmt_bind_param($current_stmt, "i", $produto_id);
+    mysqli_stmt_execute($current_stmt);
+    $current_result = mysqli_stmt_get_result($current_stmt);
+    $current_data = mysqli_fetch_assoc($current_result);
+    
+    if (!$current_data) return;
+    
+    $status_atual = $current_data['status'];
+    $produto_nome = $current_data['nome'];
+    $novo_status = $status_atual;
+    
+    // Aplicar regras de inteligência
+    if ($novo_estoque == 0 && $status_atual == 'ativo') {
+        $novo_status = 'inativo';
+    } elseif ($novo_estoque > 0 && $status_atual == 'inativo') {
+        $novo_status = 'ativo';
+    }
+    
+    // Atualizar status se necessário
+    if ($novo_status !== $status_atual) {
+        $update_query = "UPDATE produtos SET status = ? WHERE id = ?";
+        $update_stmt = mysqli_prepare($conexao, $update_query);
+        mysqli_stmt_bind_param($update_stmt, "si", $novo_status, $produto_id);
+        mysqli_stmt_execute($update_stmt);
+        
+        // Registrar log da alteração automática
+        registrar_log_alteracao($conexao, 'status_automatico', $produto_nome, 'status', $status_atual, "$novo_status - estoque: $novo_estoque");
     }
 }
 
@@ -112,6 +161,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         
         $success = mysqli_stmt_execute($stmt);
+        
+        // Aplicar inteligência de estoque se o campo alterado foi estoque
+        if ($success && $field === 'estoque') {
+            aplicarInteligenciaEstoque($conexao, $id, $value);
+        }
         
         // AGORA SIM: Gerar log com valores corretos (antes vs depois)
         if ($success) {
@@ -275,6 +329,625 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         exit;
     }
+    
+    // ===== AÇÕES EM MASSA =====
+    if ($_POST['action'] === 'bulk_stock_update') {
+        $product_ids = $_POST['product_ids'] ?? [];
+        $operation = $_POST['operation']; // 'add', 'subtract', 'set'
+        $value = (int)$_POST['value'];
+        
+        if (empty($product_ids) || $value < 0) {
+            echo json_encode(['success' => false, 'message' => 'Dados inválidos']);
+            exit;
+        }
+        
+        $success_count = 0;
+        $total_count = count($product_ids);
+        
+        foreach ($product_ids as $id) {
+            $id = (int)$id;
+            
+            // Buscar produto e verificar se tem variações
+            $product_query = "SELECT estoque, nome FROM produtos WHERE id = ?";
+            $product_stmt = mysqli_prepare($conexao, $product_query);
+            mysqli_stmt_bind_param($product_stmt, "i", $id);
+            mysqli_stmt_execute($product_stmt);
+            $product_result = mysqli_stmt_get_result($product_stmt);
+            $product_data = mysqli_fetch_assoc($product_result);
+            
+            if (!$product_data) continue;
+            
+            $product_name = $product_data['nome'];
+            
+            // Verificar se produto tem variações
+            $variations_query = "SELECT id, estoque FROM produto_variacoes WHERE produto_id = ?";
+            $variations_stmt = mysqli_prepare($conexao, $variations_query);
+            mysqli_stmt_bind_param($variations_stmt, "i", $id);
+            mysqli_stmt_execute($variations_stmt);
+            $variations_result = mysqli_stmt_get_result($variations_stmt);
+            $variations = mysqli_fetch_all($variations_result, MYSQLI_ASSOC);
+            
+            if (!empty($variations)) {
+                // PRODUTO COM VARIAÇÕES: Aplicar alteração em todas as variações
+                $variation_success = 0;
+                
+                foreach ($variations as $variation) {
+                    $current_var_stock = (int)$variation['estoque'];
+                    $new_var_stock = 0;
+                    
+                    switch ($operation) {
+                        case 'add':
+                            $new_var_stock = $current_var_stock + $value;
+                            break;
+                        case 'subtract':
+                            $new_var_stock = max(0, $current_var_stock - $value);
+                            break;
+                        case 'set':
+                            $new_var_stock = $value;
+                            break;
+                    }
+                    
+                    // Atualizar variação
+                    $update_var_query = "UPDATE produto_variacoes SET estoque = ? WHERE id = ?";
+                    $update_var_stmt = mysqli_prepare($conexao, $update_var_query);
+                    mysqli_stmt_bind_param($update_var_stmt, "ii", $new_var_stock, $variation['id']);
+                    
+                    if (mysqli_stmt_execute($update_var_stmt)) {
+                        $variation_success++;
+                    }
+                }
+                
+                if ($variation_success > 0) {
+                    // Recalcular estoque do produto pai
+                    sincronizarEstoquePai($conexao, $id);
+                    $success_count++;
+                    registrar_log_alteracao($conexao, 'estoque_massa_variacoes', $product_name, 'estoque', 'variações', "$operation $value em $variation_success variações");
+                }
+                
+            } else {
+                // PRODUTO SIMPLES (SEM VARIAÇÕES)
+                $current_stock = (int)$product_data['estoque'];
+                $new_stock = 0;
+                
+                switch ($operation) {
+                    case 'add':
+                        $new_stock = $current_stock + $value;
+                        break;
+                    case 'subtract':
+                        $new_stock = max(0, $current_stock - $value);
+                        break;
+                    case 'set':
+                        $new_stock = $value;
+                        break;
+                }
+                
+                // Atualizar produto simples
+                $update_query = "UPDATE produtos SET estoque = ? WHERE id = ?";
+                $update_stmt = mysqli_prepare($conexao, $update_query);
+                mysqli_stmt_bind_param($update_stmt, "ii", $new_stock, $id);
+                
+                if (mysqli_stmt_execute($update_stmt)) {
+                    $success_count++;
+                    
+                    // Aplicar inteligência de estoque
+                    aplicarInteligenciaEstoque($conexao, $id, $new_stock);
+                    
+                    // Registrar log
+                    registrar_log_alteracao($conexao, 'estoque_massa', $product_name, 'estoque', $current_stock, $new_stock);
+                }
+            }
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "Estoque atualizado em $success_count de $total_count produtos"
+        ]);
+        exit;
+    }
+    
+    if ($_POST['action'] === 'bulk_delete') {
+        $product_ids = $_POST['product_ids'] ?? [];
+        
+        if (empty($product_ids)) {
+            echo json_encode(['success' => false, 'message' => 'Nenhum produto selecionado']);
+            exit;
+        }
+        
+        $success_count = 0;
+        $total_count = count($product_ids);
+        
+        foreach ($product_ids as $id) {
+            $id = (int)$id;
+            
+            // Buscar nome do produto para log
+            $name_query = "SELECT nome FROM produtos WHERE id = ?";
+            $name_stmt = mysqli_prepare($conexao, $name_query);
+            mysqli_stmt_bind_param($name_stmt, "i", $id);
+            mysqli_stmt_execute($name_stmt);
+            $name_result = mysqli_stmt_get_result($name_stmt);
+            $name_data = mysqli_fetch_assoc($name_result);
+            $product_name = $name_data['nome'] ?? "ID: $id";
+            
+            // Excluir variações
+            $delete_variations = "DELETE FROM produto_variacoes WHERE produto_id = ?";
+            $delete_var_stmt = mysqli_prepare($conexao, $delete_variations);
+            mysqli_stmt_bind_param($delete_var_stmt, "i", $id);
+            mysqli_stmt_execute($delete_var_stmt);
+            
+            // Excluir produto
+            $delete_product = "DELETE FROM produtos WHERE id = ?";
+            $delete_stmt = mysqli_prepare($conexao, $delete_product);
+            mysqli_stmt_bind_param($delete_stmt, "i", $id);
+            
+            if (mysqli_stmt_execute($delete_stmt) && mysqli_affected_rows($conexao) > 0) {
+                $success_count++;
+                registrar_log_alteracao($conexao, 'exclusao_massa', $product_name, 'produto', 'ativo', 'excluído');
+            }
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "$success_count produtos excluídos com sucesso"
+        ]);
+        exit;
+    }
+    
+    if ($_POST['action'] === 'export_selected') {
+        $product_ids = $_POST['product_ids'] ?? [];
+        
+        if (empty($product_ids)) {
+            echo json_encode(['success' => false, 'message' => 'Nenhum produto selecionado']);
+            exit;
+        }
+        
+        // Criar consulta para produtos selecionados com variações
+        $placeholders = str_repeat('?,', count($product_ids) - 1) . '?';
+        $export_query = "SELECT 
+            p.id, p.sku, p.nome, p.categoria, p.preco, p.preco_promocional, 
+            p.estoque, p.status, p.descricao, p.imagem_principal
+            FROM produtos p 
+            WHERE p.id IN ($placeholders)
+            ORDER BY p.nome";
+        
+        $export_stmt = mysqli_prepare($conexao, $export_query);
+        mysqli_stmt_bind_param($export_stmt, str_repeat('i', count($product_ids)), ...$product_ids);
+        mysqli_stmt_execute($export_stmt);
+        $export_result = mysqli_stmt_get_result($export_stmt);
+        
+        $filename = 'produtos_selecionados_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Escrever BOM para UTF-8
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Cabeçalho exato do modelo
+        fputcsv($output, ['SKU', 'Nome', 'Categoria', 'Preço', 'Preço Promocional', 'Estoque', 'Status', 'Descrição', 'URL Imagem', 'Variações']);
+        
+        while ($row = mysqli_fetch_assoc($export_result)) {
+            // Buscar variações do produto
+            $var_query = "SELECT tipo, valor, estoque FROM produto_variacoes WHERE produto_id = ? ORDER BY tipo, valor";
+            $var_stmt = mysqli_prepare($conexao, $var_query);
+            mysqli_stmt_bind_param($var_stmt, "i", $row['id']);
+            mysqli_stmt_execute($var_stmt);
+            $var_result = mysqli_stmt_get_result($var_stmt);
+            
+            $variacoes_array = [];
+            while ($var = mysqli_fetch_assoc($var_result)) {
+                $variacoes_array[] = $var['tipo'] . ':' . $var['valor'] . '=' . $var['estoque'];
+            }
+            $variacoes_str = implode(';', $variacoes_array);
+            
+            // URL da imagem
+            $image_url = '';
+            if (!empty($row['imagem_principal'])) {
+                $image_url = 'https://' . $_SERVER['HTTP_HOST'] . '/admin-teste/assets/images/produtos/' . $row['imagem_principal'];
+            }
+            
+            // Formatar preços
+            $preco_formatted = number_format($row['preco'], 2, ',', '');
+            $preco_promocional_formatted = '';
+            if (!empty($row['preco_promocional']) && $row['preco_promocional'] > 0) {
+                $preco_promocional_formatted = number_format($row['preco_promocional'], 2, ',', '');
+            }
+            
+            fputcsv($output, [
+                $row['sku'],
+                $row['nome'],
+                $row['categoria'],
+                $preco_formatted,
+                $preco_promocional_formatted,
+                $row['estoque'],
+                $row['status'],
+                $row['descricao'],
+                $image_url,
+                $variacoes_str
+            ]);
+        }
+        
+        fclose($output);
+        exit;
+    }
+    
+    if ($_POST['action'] === 'export_all') {
+        $export_query = "SELECT 
+            p.id, p.sku, p.nome, p.categoria, p.preco, p.preco_promocional, 
+            p.estoque, p.status, p.descricao, p.imagem_principal
+            FROM produtos p 
+            ORDER BY p.nome";
+        
+        $export_result = mysqli_query($conexao, $export_query);
+        
+        $filename = 'todos_produtos_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Escrever BOM para UTF-8
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Cabeçalho exato do modelo
+        fputcsv($output, ['SKU', 'Nome', 'Categoria', 'Preço', 'Preço Promocional', 'Estoque', 'Status', 'Descrição', 'URL Imagem', 'Variações']);
+        
+        while ($row = mysqli_fetch_assoc($export_result)) {
+            // Buscar variações do produto
+            $var_query = "SELECT tipo, valor, estoque FROM produto_variacoes WHERE produto_id = ? ORDER BY tipo, valor";
+            $var_stmt = mysqli_prepare($conexao, $var_query);
+            mysqli_stmt_bind_param($var_stmt, "i", $row['id']);
+            mysqli_stmt_execute($var_stmt);
+            $var_result = mysqli_stmt_get_result($var_stmt);
+            
+            $variacoes_array = [];
+            while ($var = mysqli_fetch_assoc($var_result)) {
+                $variacoes_array[] = $var['tipo'] . ':' . $var['valor'] . '=' . $var['estoque'];
+            }
+            $variacoes_str = implode(';', $variacoes_array);
+            
+            // URL da imagem
+            $image_url = '';
+            if (!empty($row['imagem_principal'])) {
+                $image_url = 'https://' . $_SERVER['HTTP_HOST'] . '/admin-teste/assets/images/produtos/' . $row['imagem_principal'];
+            }
+            
+            // Formatar preços
+            $preco_formatted = number_format($row['preco'], 2, ',', '');
+            $preco_promocional_formatted = '';
+            if (!empty($row['preco_promocional']) && $row['preco_promocional'] > 0) {
+                $preco_promocional_formatted = number_format($row['preco_promocional'], 2, ',', '');
+            }
+            
+            fputcsv($output, [
+                $row['sku'],
+                $row['nome'],
+                $row['categoria'],
+                $preco_formatted,
+                $preco_promocional_formatted,
+                $row['estoque'],
+                $row['status'],
+                $row['descricao'],
+                $image_url,
+                $variacoes_str
+            ]);
+        }
+        
+        exit;
+    }
+    
+    if ($_POST['action'] === 'import_products') {
+        if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'message' => 'Erro no upload do arquivo']);
+            exit;
+        }
+        
+        $file_path = $_FILES['import_file']['tmp_name'];
+        $file_extension = strtolower(pathinfo($_FILES['import_file']['name'], PATHINFO_EXTENSION));
+        
+        if (!in_array($file_extension, ['csv', 'xlsx', 'xls'])) {
+            echo json_encode(['success' => false, 'message' => 'Formato não suportado. Use CSV ou Excel']);
+            exit;
+        }
+        
+        $imported = 0;
+        $updated = 0;
+        $errors = [];
+        
+        // Processar CSV com modelo específico
+        if ($file_extension === 'csv') {
+            if (($handle = fopen($file_path, "r")) !== FALSE) {
+                // Definir encoding para UTF-8
+                $first_line = fgets($handle);
+                if (substr($first_line, 0, 3) == pack('CCC', 0xef, 0xbb, 0xbf)) {
+                    // Remove BOM UTF-8
+                }
+                rewind($handle);
+                
+                // Pular cabeçalho
+                $header = fgetcsv($handle, 1000, ",");
+                
+                $linha_numero = 2; // Começar da linha 2 (após cabeçalho)
+                
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    // Verificar se linha tem dados suficientes
+                    if (count($data) < 3) {
+                        $linha_numero++;
+                        continue; // Pular linhas vazias
+                    }
+                    
+                    // Mapear colunas exatas: SKU, Nome, Categoria, Preço, Preço Promocional, Estoque, Status, Descrição, URL Imagem, Variações
+                    $sku = trim($data[0] ?? '');
+                    $nome = trim($data[1] ?? '');
+                    $categoria = trim($data[2] ?? '');
+                    $preco_raw = trim($data[3] ?? '0');
+                    $preco_promocional_raw = trim($data[4] ?? '');
+                    $estoque = (int)($data[5] ?? 0);
+                    $status = strtolower(trim($data[6] ?? 'ativo'));
+                    $descricao = trim($data[7] ?? '');
+                    $image_url = trim($data[8] ?? '');
+                    $variacoes_str = trim($data[9] ?? '');
+                    
+                    // Limpar e converter preços
+                    $preco = (float)str_replace([',', 'R$', ' '], ['.', '', ''], $preco_raw);
+                    $preco_promocional = null;
+                    if (!empty($preco_promocional_raw)) {
+                        $preco_promocional = (float)str_replace([',', 'R$', ' '], ['.', '', ''], $preco_promocional_raw);
+                        if ($preco_promocional <= 0) $preco_promocional = null;
+                    }
+                    
+                    // Validações obrigatórias
+                    if (empty($sku)) {
+                        $errors[] = "Linha $linha_numero: SKU não pode estar vazio";
+                        $linha_numero++;
+                        continue;
+                    }
+                    
+                    if (empty($nome)) {
+                        $errors[] = "Linha $linha_numero: Nome não pode estar vazio";
+                        $linha_numero++;
+                        continue;
+                    }
+                    
+                    if ($preco <= 0) {
+                        $errors[] = "Linha $linha_numero: Preço deve ser maior que zero";
+                        $linha_numero++;
+                        continue;
+                    }
+                    
+                    // Normalizar status
+                    if (!in_array($status, ['ativo', 'inativo'])) {
+                        $status = 'ativo';
+                    }
+                    
+                    try {
+                        mysqli_begin_transaction($conexao);
+                        
+                        // Verificar se produto existe pelo SKU
+                        $check_query = "SELECT id FROM produtos WHERE sku = ?";
+                        $check_stmt = mysqli_prepare($conexao, $check_query);
+                        mysqli_stmt_bind_param($check_stmt, "s", $sku);
+                        mysqli_stmt_execute($check_stmt);
+                        $check_result = mysqli_stmt_get_result($check_stmt);
+                        $existing = mysqli_fetch_assoc($check_result);
+                        
+                        // Processar imagem
+                        $imagem_nome = '';
+                        if (!empty($image_url)) {
+                            $imagem_nome = processar_imagem_inteligente($image_url, $sku);
+                        }
+                        
+                        if ($existing) {
+                            // ATUALIZAR produto existente (não criar novo)
+                            $product_id = $existing['id'];
+                            
+                            // Limpar variações antigas se há novas variações
+                            if (!empty($variacoes_str)) {
+                                $delete_vars = "DELETE FROM produto_variacoes WHERE produto_id = ?";
+                                $delete_vars_stmt = mysqli_prepare($conexao, $delete_vars);
+                                mysqli_stmt_bind_param($delete_vars_stmt, "i", $product_id);
+                                mysqli_stmt_execute($delete_vars_stmt);
+                            }
+                            
+                            $update_query = "UPDATE produtos SET 
+                                nome = ?, categoria = ?, preco = ?, preco_promocional = ?, 
+                                estoque = ?, status = ?, descricao = ?";
+                            
+                            $params = [$nome, $categoria, $preco, $preco_promocional, $estoque, $status, $descricao];
+                            $types = "sssdiss";
+                            
+                            if (!empty($imagem_nome)) {
+                                $update_query .= ", imagem_principal = ?";
+                                $params[] = $imagem_nome;
+                                $types .= "s";
+                            }
+                            
+                            $update_query .= " WHERE id = ?";
+                            $params[] = $product_id;
+                            $types .= "i";
+                            
+                            $update_stmt = mysqli_prepare($conexao, $update_query);
+                            mysqli_stmt_bind_param($update_stmt, $types, ...$params);
+                            
+                            if (mysqli_stmt_execute($update_stmt)) {
+                                $updated++;
+                                
+                                // Processar variações se fornecidas
+                                if (!empty($variacoes_str)) {
+                                    processar_variacoes_importacao_melhorada($conexao, $product_id, $variacoes_str);
+                                    // Recalcular estoque do produto pai
+                                    sincronizarEstoquePai($conexao, $product_id);
+                                } else {
+                                    // Aplicar inteligência de estoque em produto simples
+                                    aplicarInteligenciaEstoque($conexao, $product_id, $estoque);
+                                }
+                                
+                                registrar_log_alteracao($conexao, 'importacao_atualizacao', $nome, 'produto', 'existente', 'atualizado via CSV');
+                            }
+                            
+                        } else {
+                            // CRIAR novo produto
+                            $insert_query = "INSERT INTO produtos (
+                                sku, nome, categoria, preco, preco_promocional, estoque, 
+                                status, descricao, imagem_principal, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                            
+                            $insert_stmt = mysqli_prepare($conexao, $insert_query);
+                            mysqli_stmt_bind_param($insert_stmt, "sssdissss", 
+                                $sku, $nome, $categoria, $preco, $preco_promocional, 
+                                $estoque, $status, $descricao, $imagem_nome);
+                            
+                            if (mysqli_stmt_execute($insert_stmt)) {
+                                $imported++;
+                                $product_id = mysqli_insert_id($conexao);
+                                
+                                // Processar variações se fornecidas
+                                if (!empty($variacoes_str)) {
+                                    processar_variacoes_importacao_melhorada($conexao, $product_id, $variacoes_str);
+                                    // Recalcular estoque do produto pai
+                                    sincronizarEstoquePai($conexao, $product_id);
+                                } else {
+                                    // Aplicar inteligência de estoque em produto simples
+                                    aplicarInteligenciaEstoque($conexao, $product_id, $estoque);
+                                }
+                                
+                                registrar_log_alteracao($conexao, 'importacao_criacao', $nome, 'produto', 'novo', 'criado via CSV');
+                            }
+                        }
+                        
+                        mysqli_commit($conexao);
+                        
+                    } catch (Exception $e) {
+                        mysqli_rollback($conexao);
+                        $errors[] = "Linha $linha_numero: Erro ao processar - " . $e->getMessage();
+                    }
+                    
+                    $linha_numero++;
+                }
+                fclose($handle);
+            }
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "Importação concluída: $imported novos, $updated atualizados",
+            'errors' => $errors
+        ]);
+        exit;
+    }
+}
+
+// Função auxiliar para processar imagem (inteligente - URL externa vs caminho interno)
+function processar_imagem_inteligente($image_path, $sku) {
+    // Se já é um caminho interno (não contém http), apenas retornar
+    if (!preg_match('/^https?:\/\//', $image_path)) {
+        // Verificar se arquivo existe no diretório de uploads
+        $uploads_dir = '../../../assets/images/produtos/';
+        if (file_exists($uploads_dir . basename($image_path))) {
+            return basename($image_path);
+        }
+        return ''; // Arquivo não existe
+    }
+    
+    // É uma URL externa, baixar
+    return baixar_imagem_url($image_path, $sku);
+}
+
+// Função auxiliar para baixar imagem de URL
+function baixar_imagem_url($url, $sku) {
+    $uploads_dir = '../../../assets/images/produtos/';
+    
+    if (!is_dir($uploads_dir)) {
+        mkdir($uploads_dir, 0777, true);
+    }
+    
+    // Tentar baixar imagem com timeout e headers
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 10,
+            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        ]
+    ]);
+    
+    $image_data = @file_get_contents($url, false, $context);
+    if ($image_data === false) return '';
+    
+    // Detectar extensão da URL ou do cabeçalho
+    $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+    if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+        // Tentar detectar pelo cabeçalho da imagem
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime_type = $finfo->buffer($image_data);
+        
+        switch ($mime_type) {
+            case 'image/jpeg': $extension = 'jpg'; break;
+            case 'image/png': $extension = 'png'; break;
+            case 'image/gif': $extension = 'gif'; break;
+            case 'image/webp': $extension = 'webp'; break;
+            default: $extension = 'jpg'; // fallback
+        }
+    }
+    
+    // Sanitizar SKU para nome de arquivo
+    $clean_sku = preg_replace('/[^a-zA-Z0-9_-]/', '_', $sku);
+    $filename = $clean_sku . '_' . time() . '.' . $extension;
+    $filepath = $uploads_dir . $filename;
+    
+    if (file_put_contents($filepath, $image_data) !== false) {
+        return $filename;
+    }
+    
+    return '';
+}
+
+// Função melhorada para processar variações na importação
+function processar_variacoes_importacao_melhorada($conexao, $produto_id, $variacoes_str) {
+    if (empty($variacoes_str)) return;
+    
+    // Formato esperado: "cor:Vermelho Paixão=25;tamanho:M=15;cor:Azul Céu=30"
+    $variacoes = array_filter(explode(';', $variacoes_str));
+    
+    foreach ($variacoes as $variacao) {
+        $variacao = trim($variacao);
+        if (empty($variacao) || strpos($variacao, '=') === false) continue;
+        
+        list($tipo_valor, $estoque_str) = explode('=', $variacao, 2);
+        if (strpos($tipo_valor, ':') === false) continue;
+        
+        list($tipo, $valor) = explode(':', $tipo_valor, 2);
+        $tipo = trim($tipo);
+        $valor = trim($valor);
+        $estoque = max(0, (int)trim($estoque_str));
+        
+        if (empty($tipo) || empty($valor)) continue;
+        
+        // Verificar se variação já existe
+        $check_var = "SELECT id FROM produto_variacoes WHERE produto_id = ? AND tipo = ? AND valor = ?";
+        $check_var_stmt = mysqli_prepare($conexao, $check_var);
+        mysqli_stmt_bind_param($check_var_stmt, "iss", $produto_id, $tipo, $valor);
+        mysqli_stmt_execute($check_var_stmt);
+        $var_result = mysqli_stmt_get_result($check_var_stmt);
+        
+        if (mysqli_fetch_assoc($var_result)) {
+            // Atualizar variação existente
+            $update_var = "UPDATE produto_variacoes SET estoque = ? WHERE produto_id = ? AND tipo = ? AND valor = ?";
+            $update_var_stmt = mysqli_prepare($conexao, $update_var);
+            mysqli_stmt_bind_param($update_var_stmt, "iiss", $estoque, $produto_id, $tipo, $valor);
+            mysqli_stmt_execute($update_var_stmt);
+        } else {
+            // Criar nova variação
+            $insert_var = "INSERT INTO produto_variacoes (produto_id, tipo, valor, estoque, preco, preco_promocional) VALUES (?, ?, ?, ?, NULL, NULL)";
+            $insert_var_stmt = mysqli_prepare($conexao, $insert_var);
+            mysqli_stmt_bind_param($insert_var_stmt, "issi", $produto_id, $tipo, $valor, $estoque);
+            mysqli_stmt_execute($insert_var_stmt);
+        }
+    }
 }
 
 // Buscar produtos com filtros
@@ -358,11 +1031,24 @@ if (isset($_GET['debug'])) {
     echo "<p><strong>Filtro estoque:</strong> '$estoque'</p>";
     echo "<p><strong>Condições:</strong> " . htmlspecialchars(print_r($conditions, true)) . "</p>";
     echo "<p><strong>SQL final:</strong> " . htmlspecialchars($sql) . "</p>";
+    echo "<p><strong>Parâmetros:</strong> " . htmlspecialchars(print_r($params, true)) . "</p>";
     echo "</div>";
 }
 
-// Forçar execução sem prepared statement para debug
-$products = mysqli_query($conexao, $sql);
+// Executar query usando prepared statement se há parâmetros
+if (!empty($params)) {
+    $stmt = mysqli_prepare($conexao, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+        mysqli_stmt_execute($stmt);
+        $products = mysqli_stmt_get_result($stmt);
+    } else {
+        $products = false;
+    }
+} else {
+    // Executar query direta se não há parâmetros
+    $products = mysqli_query($conexao, $sql);
+}
 
 if (!$products) {
     echo "<div style='color: red; background: #ffe6e6; padding: 10px;'>Erro SQL: " . mysqli_error($conexao) . "</div>";
@@ -995,35 +1681,44 @@ $total_products = mysqli_num_rows($products);
         
         /* Botões modernos minimalistas */
         .product-actions {
-            position: absolute;
-            top: 50%;
-            right: 16px;
-            transform: translateY(-50%);
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            z-index: 10;
+            gap: 4px;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0;
         }
 
         .action-btn {
-            width: 30px;
-            height: 30px;
+            width: 26px;
+            height: 26px;
             border: none;
-            border-radius: 8px;
+            border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            background: rgba(255, 255, 255, 0.8);
-            color: #6b7280;
-            backdrop-filter: blur(4px);
+            font-size: 16px;
+            transition: all 0.15s ease;
+            background: transparent;
+            color: var(--color-info-dark);
+            opacity: 0.6;
         }
 
         .action-btn:hover {
-            transform: scale(1.1);
-            color: white;
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .edit-btn:hover {
+            color: #3b82f6;
+        }
+
+        .delete-btn:hover {
+            color: #ef4444;
+        }
+
+        .action-btn .material-symbols-sharp {
+            font-size: 16px;
         }
 
         .edit-btn:hover {
@@ -1292,11 +1987,26 @@ $total_products = mysqli_num_rows($products);
         <main>
             <div class="products-header">
                 <div class="products-title">
-                    <h1>Produtos (<?php echo $total_products; ?>)</h1>
-                    <a href="addproducts.php" class="add-product-btn">
-                        <span class="material-symbols-sharp">add</span>
-                        Adicionar Produto
-                    </a>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <h1>Produtos (<?php echo $total_products; ?>)</h1>
+                        <div class="bulk-selection-controls" style="display: none;">
+                            <span id="selected-count" style="color: var(--color-primary); font-weight: 600;">0 selecionados</span>
+                        </div>
+                    </div>
+                    <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+                        <button id="exportAllBtn" class="secondary-btn" onclick="exportAllProducts()">
+                            <span class="material-symbols-sharp">download</span>
+                            Exportar Tudo
+                        </button>
+                        <button id="importBtn" class="secondary-btn" onclick="openImportModal()">
+                            <span class="material-symbols-sharp">upload</span>
+                            Importar Planilha
+                        </button>
+                        <a href="addproducts.php" class="add-product-btn">
+                            <span class="material-symbols-sharp">add</span>
+                            Adicionar Produto
+                        </a>
+                    </div>
                 </div>
                 
                 <!-- Barra de filtros -->
@@ -1379,11 +2089,27 @@ $total_products = mysqli_num_rows($products);
             </div>
 
             <div class="products-list">
+                <!-- Cabeçalho com Selecionar Todos -->
                 <?php 
-                $has_products = false;
+                // Verificar se há produtos primeiro
                 mysqli_data_seek($products, 0); // Resetar ponteiro
-                while ($product = mysqli_fetch_assoc($products)): 
-                    $has_products = true;
+                $has_products = mysqli_num_rows($products) > 0;
+                ?>
+                <?php if ($has_products): ?>
+                <div class="products-list-header">
+                    <div class="select-all-container">
+                        <label class="bulk-checkbox-container">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                            <span class="bulk-checkbox"></span>
+                            <span class="select-all-text">Selecionar Todos</span>
+                        </label>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <?php 
+                mysqli_data_seek($products, 0); // Resetar ponteiro novamente para os produtos
+                while ($product = mysqli_fetch_assoc($products)):
                     
                     // Debug temporário - mostrar dados do produto
                     if (isset($_GET['debug'])) {
@@ -1406,6 +2132,14 @@ $total_products = mysqli_num_rows($products);
                     }
                 ?>
                     <div class="product-item" data-product-id="<?php echo $product['id']; ?>">
+                        <!-- Checkbox para seleção -->
+                        <div class="product-selection">
+                            <label class="bulk-checkbox-container">
+                                <input type="checkbox" class="product-checkbox" value="<?php echo $product['id']; ?>" onchange="updateSelection()">
+                                <span class="bulk-checkbox"></span>
+                            </label>
+                        </div>
+                        
                         <!-- Imagem -->
                         <div class="product-image">
                             <?php if (!empty($product['imagem_principal'])): ?>
@@ -1599,6 +2333,162 @@ $total_products = mysqli_num_rows($products);
                 <?php endif; ?>
             </div>
         </main>
+
+        <!-- BARRA DE AÇÕES EM MASSA (FLUTUANTE) -->
+        <div id="bulkActionBar" class="bulk-action-bar">
+            <div class="bulk-action-content">
+                <div class="bulk-action-info">
+                    <span id="bulkSelectedCount">0</span> produtos selecionados
+                </div>
+                <div class="bulk-actions">
+                    <button class="bulk-btn stock-btn" onclick="openBulkStockModal()">
+                        <span class="material-symbols-sharp">inventory</span>
+                        Alterar Estoque
+                    </button>
+                    <button class="bulk-btn export-btn" onclick="exportSelectedProducts()">
+                        <span class="material-symbols-sharp">download</span>
+                        Exportar Selecionados
+                    </button>
+                    <button class="bulk-btn delete-btn" onclick="confirmBulkDelete()">
+                        <span class="material-symbols-sharp">delete</span>
+                        Excluir Selecionados
+                    </button>
+                    <button class="bulk-btn cancel-btn" onclick="clearAllSelections()">
+                        <span class="material-symbols-sharp">close</span>
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL PARA IMPORTAÇÃO -->
+        <div id="importModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Importar Produtos</h3>
+                    <button class="modal-close" onclick="closeImportModal()">
+                        <span class="material-symbols-sharp">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="import-instructions">
+                        <h4>📋 Formato da Planilha</h4>
+                        <p>Sua planilha deve conter as seguintes colunas (nesta ordem):</p>
+                        <div class="format-table">
+                            <div class="format-row">
+                                <span class="col-name">SKU</span>
+                                <span class="col-desc">Código único (obrigatório)</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Nome</span>
+                                <span class="col-desc">Nome do produto (obrigatório)</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Categoria</span>
+                                <span class="col-desc">Categoria do produto</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Preço</span>
+                                <span class="col-desc">Preço normal (obrigatório)</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Preço Promocional</span>
+                                <span class="col-desc">Preço em promoção (opcional)</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Estoque</span>
+                                <span class="col-desc">Quantidade em estoque</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Status</span>
+                                <span class="col-desc">ativo/inativo (opcional)</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Descrição</span>
+                                <span class="col-desc">Descrição do produto (opcional)</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">URL Imagem</span>
+                                <span class="col-desc">Link da imagem (opcional)</span>
+                            </div>
+                            <div class="format-row">
+                                <span class="col-name">Variações</span>
+                                <span class="col-desc">Formato: Cor:Azul=10;Tamanho:M=5</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="importForm" enctype="multipart/form-data">
+                        <div class="file-upload-area" onclick="document.getElementById('importFile').click()">
+                            <span class="material-symbols-sharp">cloud_upload</span>
+                            <p>Clique para selecionar arquivo CSV ou Excel</p>
+                            <small>Formatos aceitos: .csv, .xlsx, .xls</small>
+                            <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display: none;">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeImportModal()">Cancelar</button>
+                    <button class="btn-primary" onclick="processImport()" id="importButton" disabled>
+                        <span class="material-symbols-sharp">upload</span>
+                        Importar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL PARA ALTERAR ESTOQUE EM MASSA -->
+        <div id="bulkStockModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Alterar Estoque em Massa</h3>
+                    <button class="modal-close" onclick="closeBulkStockModal()">
+                        <span class="material-symbols-sharp">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="stock-operation-selector">
+                        <label class="radio-option">
+                            <input type="radio" name="stockOperation" value="add" checked>
+                            <span class="radio-custom"></span>
+                            <span class="radio-text">
+                                <strong>Somar</strong> - Adicionar unidades ao estoque atual
+                            </span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="stockOperation" value="subtract">
+                            <span class="radio-custom"></span>
+                            <span class="radio-text">
+                                <strong>Subtrair</strong> - Remover unidades do estoque atual
+                            </span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="stockOperation" value="set">
+                            <span class="radio-custom"></span>
+                            <span class="radio-text">
+                                <strong>Definir</strong> - Substituir estoque por valor exato
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <div class="stock-input-group">
+                        <label for="stockValue">Valor:</label>
+                        <input type="number" id="stockValue" min="0" value="1" class="stock-input">
+                    </div>
+                    
+                    <div class="stock-preview" id="stockPreview">
+                        <!-- Preview será preenchido via JavaScript -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeBulkStockModal()">Cancelar</button>
+                    <button class="btn-primary" onclick="executeBulkStockUpdate()">
+                        <span class="material-symbols-sharp">check</span>
+                        Aplicar Alteração
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- PAINEL DIREITO -->
         <div class="right">
@@ -2618,6 +3508,489 @@ $total_products = mysqli_num_rows($products);
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* === ESTILOS PARA SELEÇÃO EM MASSA === */
+        .products-list-header {
+            background: var(--color-background);
+            border: 1px solid var(--color-primary);
+            border-radius: 1rem 1rem 0 0;
+            padding: 1rem;
+            border-bottom: none;
+        }
+        
+        .select-all-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        .bulk-checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .bulk-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-primary);
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .bulk-checkbox-container input[type="checkbox"] {
+            display: none;
+        }
+        
+        .bulk-checkbox-container input[type="checkbox"]:checked + .bulk-checkbox {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        
+        .bulk-checkbox-container input[type="checkbox"]:checked + .bulk-checkbox::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .select-all-text {
+            font-weight: 600;
+            color: var(--color-dark);
+        }
+        
+        .product-selection {
+            padding: 0 0.5rem;
+        }
+        
+        /* Ajustar grid da lista para incluir checkbox */
+        .product-item {
+            display: grid;
+            grid-template-columns: 50px 60px 1fr auto auto auto 80px;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem;
+            border: 1px solid var(--color-primary);
+            border-top: none;
+            position: relative;
+        }
+        
+        .product-item:last-child {
+            border-radius: 0 0 1rem 1rem;
+        }
+        
+        /* === BARRA DE AÇÕES EM MASSA === */
+        .bulk-action-bar {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--color-white);
+            border: 2px solid var(--color-primary);
+            border-radius: 1rem;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 10px 40px rgba(255, 0, 212, 0.2);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-50%) translateY(20px);
+        }
+        
+        .bulk-action-bar.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .bulk-action-content {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        .bulk-action-info {
+            font-weight: 600;
+            color: var(--color-dark);
+            min-width: 120px;
+        }
+        
+        .bulk-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        
+        .bulk-btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+        
+        .bulk-btn .material-symbols-sharp {
+            font-size: 18px;
+        }
+        
+        .stock-btn {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .stock-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .export-btn {
+            background: #10b981;
+            color: white;
+        }
+        
+        .export-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .delete-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+        
+        .cancel-btn {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .cancel-btn:hover {
+            background: #4b5563;
+            transform: translateY(-1px);
+        }
+        
+        /* === BOTÕES DO CABEÇALHO === */
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .secondary-btn {
+            padding: 0.75rem 1rem;
+            background: var(--color-background);
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        
+        .secondary-btn:hover {
+            background: var(--color-primary);
+            color: white;
+            transform: translateY(-1px);
+        }
+        
+        /* === MODAIS === */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: var(--color-white);
+            border-radius: 1rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--color-light);
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: var(--color-dark);
+            font-size: 1.5rem;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--color-info-dark);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background: var(--color-light);
+            color: var(--color-dark);
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--color-light);
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+        
+        /* === MODAL DE IMPORTAÇÃO === */
+        .import-instructions h4 {
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .format-table {
+            background: var(--color-background);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .format-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--color-light);
+        }
+        
+        .format-row:last-child {
+            border-bottom: none;
+        }
+        
+        .col-name {
+            font-weight: 600;
+            color: var(--color-dark);
+        }
+        
+        .col-desc {
+            color: var(--color-info-dark);
+            font-size: 14px;
+        }
+        
+        .file-upload-area {
+            border: 2px dashed var(--color-primary);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+        }
+        
+        .file-upload-area:hover {
+            background: rgba(255, 0, 212, 0.05);
+            border-color: var(--color-primary-variant);
+        }
+        
+        .file-upload-area .material-symbols-sharp {
+            font-size: 3rem;
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .file-upload-area p {
+            margin: 0 0 0.5rem 0;
+            font-weight: 600;
+            color: var(--color-dark);
+        }
+        
+        .file-upload-area small {
+            color: var(--color-info-dark);
+        }
+        
+        /* === MODAL DE ESTOQUE === */
+        .stock-operation-selector {
+            margin-bottom: 1.5rem;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border: 2px solid var(--color-light);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .radio-option:hover {
+            border-color: var(--color-primary);
+            background: rgba(255, 0, 212, 0.02);
+        }
+        
+        .radio-option input[type="radio"] {
+            display: none;
+        }
+        
+        .radio-custom {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-info-dark);
+            border-radius: 50%;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .radio-option input[type="radio"]:checked + .radio-custom {
+            border-color: var(--color-primary);
+            background: var(--color-primary);
+        }
+        
+        .radio-option input[type="radio"]:checked + .radio-custom::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        .radio-option input[type="radio"]:checked ~ .radio-text {
+            color: var(--color-primary);
+        }
+        
+        .radio-text {
+            flex: 1;
+        }
+        
+        .stock-input-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .stock-input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--color-dark);
+        }
+        
+        .stock-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--color-light);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .stock-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(255, 0, 212, 0.1);
+        }
+        
+        .stock-preview {
+            background: var(--color-background);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid var(--color-primary);
+        }
+        
+        /* === BOTÕES DOS MODAIS === */
+        .btn-primary, .btn-secondary {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--color-primary-variant);
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary:disabled {
+            background: var(--color-info-dark);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: var(--color-background);
+            color: var(--color-dark);
+            border: 2px solid var(--color-light);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            transform: translateY(-1px);
+        }
     </style>
 
     <script src="../../js/dashboard.js"></script>
@@ -3036,6 +4409,342 @@ $total_products = mysqli_num_rows($products);
         window.showInfo = function(message) {
             createToast(message, 'info');
         };
+
+        // ===== FUNCIONALIDADES DE SELEÇÃO EM MASSA =====
+        
+        let selectedProducts = new Set();
+
+        // Toggle de seleção de todos os produtos
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const productCheckboxes = document.querySelectorAll('.product-checkbox');
+            
+            if (selectAllCheckbox.checked) {
+                productCheckboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                    selectedProducts.add(checkbox.value);
+                });
+            } else {
+                productCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                selectedProducts.clear();
+            }
+            
+            updateSelection();
+        }
+
+        // Atualizar seleção quando checkbox individual é alterado
+        function updateSelection() {
+            const productCheckboxes = document.querySelectorAll('.product-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            
+            selectedProducts.clear();
+            
+            let checkedCount = 0;
+            productCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedProducts.add(checkbox.value);
+                    checkedCount++;
+                }
+            });
+            
+            // Atualizar estado do "Selecionar Todos"
+            if (checkedCount === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (checkedCount === productCheckboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+            }
+            
+            // Mostrar/ocultar barra de ações
+            const bulkActionBar = document.getElementById('bulkActionBar');
+            const selectedCountDisplay = document.getElementById('bulkSelectedCount');
+            
+            if (selectedProducts.size > 0) {
+                selectedCountDisplay.textContent = selectedProducts.size;
+                bulkActionBar.classList.add('show');
+            } else {
+                bulkActionBar.classList.remove('show');
+            }
+        }
+
+        // Limpar todas as seleções
+        function clearAllSelections() {
+            selectedProducts.clear();
+            document.querySelectorAll('.product-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('selectAllCheckbox').checked = false;
+            document.getElementById('selectAllCheckbox').indeterminate = false;
+            document.getElementById('bulkActionBar').classList.remove('show');
+        }
+
+        // ===== MODAL DE ESTOQUE EM MASSA =====
+        
+        function openBulkStockModal() {
+            if (selectedProducts.size === 0) {
+                showError('Nenhum produto selecionado');
+                return;
+            }
+            
+            document.getElementById('bulkStockModal').classList.add('show');
+            updateStockPreview();
+        }
+
+        function closeBulkStockModal() {
+            document.getElementById('bulkStockModal').classList.remove('show');
+            document.getElementById('stockValue').value = 1;
+            document.querySelector('input[name="stockOperation"][value="add"]').checked = true;
+        }
+
+        function updateStockPreview() {
+            const operation = document.querySelector('input[name="stockOperation"]:checked').value;
+            const value = document.getElementById('stockValue').value || 0;
+            const preview = document.getElementById('stockPreview');
+            
+            let operationText = '';
+            switch(operation) {
+                case 'add': operationText = `Somar ${value} unidades`; break;
+                case 'subtract': operationText = `Subtrair ${value} unidades`; break;
+                case 'set': operationText = `Definir estoque como ${value} unidades`; break;
+            }
+            
+            preview.innerHTML = `
+                <h4>Preview da Operação</h4>
+                <p><strong>Ação:</strong> ${operationText}</p>
+                <p><strong>Produtos afetados:</strong> ${selectedProducts.size}</p>
+            `;
+        }
+
+        function executeBulkStockUpdate() {
+            if (selectedProducts.size === 0) {
+                showError('Nenhum produto selecionado');
+                return;
+            }
+            
+            const operation = document.querySelector('input[name="stockOperation"]:checked').value;
+            const value = parseInt(document.getElementById('stockValue').value) || 0;
+            
+            if (value < 0) {
+                showError('Valor deve ser maior ou igual a zero');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('action', 'bulk_stock_update');
+            formData.append('operation', operation);
+            formData.append('value', value);
+            
+            selectedProducts.forEach(productId => {
+                formData.append('product_ids[]', productId);
+            });
+            
+            fetch('products.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(data.message);
+                    closeBulkStockModal();
+                    clearAllSelections();
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showError(data.message || 'Erro ao atualizar estoque');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showError('Erro de conexão');
+            });
+        }
+
+        // ===== EXPORTAÇÃO =====
+        
+        function exportSelectedProducts() {
+            if (selectedProducts.size === 0) {
+                showError('Nenhum produto selecionado');
+                return;
+            }
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'products.php';
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'export_selected';
+            form.appendChild(actionInput);
+            
+            selectedProducts.forEach(productId => {
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'product_ids[]';
+                idInput.value = productId;
+                form.appendChild(idInput);
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+            
+            showInfo(`Exportando ${selectedProducts.size} produtos...`);
+        }
+
+        function exportAllProducts() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'products.php';
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'export_all';
+            form.appendChild(actionInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+            
+            showInfo('Exportando todos os produtos...');
+        }
+
+        // ===== EXCLUSÃO EM MASSA =====
+        
+        function confirmBulkDelete() {
+            if (selectedProducts.size === 0) {
+                showError('Nenhum produto selecionado');
+                return;
+            }
+            
+            const message = `Tem certeza que deseja excluir ${selectedProducts.size} produto(s) selecionado(s)?\\n\\nEsta ação não pode ser desfeita.`;
+            
+            if (confirm(message)) {
+                executeBulkDelete();
+            }
+        }
+
+        function executeBulkDelete() {
+            const formData = new FormData();
+            formData.append('action', 'bulk_delete');
+            
+            selectedProducts.forEach(productId => {
+                formData.append('product_ids[]', productId);
+            });
+            
+            fetch('products.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(data.message);
+                    clearAllSelections();
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showError(data.message || 'Erro ao excluir produtos');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showError('Erro de conexão');
+            });
+        }
+
+        // ===== IMPORTAÇÃO =====
+        
+        function openImportModal() {
+            document.getElementById('importModal').classList.add('show');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('show');
+            document.getElementById('importFile').value = '';
+            document.getElementById('importButton').disabled = true;
+        }
+
+        function processImport() {
+            const fileInput = document.getElementById('importFile');
+            if (!fileInput.files[0]) {
+                showError('Selecione um arquivo para importar');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('action', 'import_products');
+            formData.append('import_file', fileInput.files[0]);
+            
+            const importButton = document.getElementById('importButton');
+            const originalText = importButton.innerHTML;
+            importButton.innerHTML = '<span class="material-symbols-sharp">sync</span> Importando...';
+            importButton.disabled = true;
+            
+            fetch('products.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(data.message);
+                    if (data.errors && data.errors.length > 0) {
+                        console.log('Erros de importação:', data.errors);
+                    }
+                    closeImportModal();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showError(data.message || 'Erro na importação');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showError('Erro de conexão');
+            })
+            .finally(() => {
+                importButton.innerHTML = originalText;
+                importButton.disabled = false;
+            });
+        }
+
+        // ===== EVENT LISTENERS =====
+        
+        // Arquivo de importação selecionado
+        document.addEventListener('DOMContentLoaded', function() {
+            const importFile = document.getElementById('importFile');
+            const importButton = document.getElementById('importButton');
+            
+            if (importFile) {
+                importFile.addEventListener('change', function() {
+                    importButton.disabled = !this.files[0];
+                });
+            }
+            
+            // Listeners para atualizar preview do estoque
+            const stockRadios = document.querySelectorAll('input[name="stockOperation"]');
+            const stockInput = document.getElementById('stockValue');
+            
+            stockRadios.forEach(radio => {
+                radio.addEventListener('change', updateStockPreview);
+            });
+            
+            if (stockInput) {
+                stockInput.addEventListener('input', updateStockPreview);
+            }
+            
+            // Fechar modais clicando fora
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('show');
+                    }
+                });
+            });
+        });
     </script>
 
     <!-- Custom Delete Modal -->
