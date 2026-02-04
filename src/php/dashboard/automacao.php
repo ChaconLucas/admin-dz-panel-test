@@ -220,8 +220,40 @@ try {
     <link rel="stylesheet" href="../../css/dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Aplicar tema imediatamente -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('darkTheme');
+            if (savedTheme === 'true' || savedTheme === null) {
+                document.body.classList.add('dark-theme-variables');
+            } else {
+                document.body.classList.remove('dark-theme-variables');
+            }
+        })();
+    </script>
+    
     <title>Configurações de Automação</title>
     <style>
+        /* Variáveis CSS para modo dark */
+        :root {
+            --auto-bg: #ffffff;
+            --auto-text: #333333;
+            --auto-border: #ddd;
+            --auto-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --auto-input-bg: #ffffff;
+            --auto-card-bg: #ffffff;
+        }
+        
+        body.dark-theme-variables {
+            --auto-bg: #202528;
+            --auto-text: #edeffd;
+            --auto-border: rgba(255,255,255,0.1);
+            --auto-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            --auto-input-bg: #2a2d31;
+            --auto-card-bg: #202528;
+        }
+        
         aside .sidebar a.active {
             background: rgba(255, 20, 147, 0.15) !important;
             color: #ff1493 !important;
@@ -255,6 +287,12 @@ try {
             transition: all 0.3s ease;
         }
         
+        body.dark-theme-variables .config-card {
+            background: var(--auto-card-bg);
+            color: var(--auto-text);
+            box-shadow: var(--auto-shadow);
+        }
+        
         .config-card:hover {
             border-color: var(--color-primary-variant);
             transform: translateY(-2px);
@@ -269,6 +307,11 @@ try {
             font-size: 1.2rem;
             border-bottom: 2px solid var(--color-light);
             padding-bottom: 0.75rem;
+        }
+        
+        body.dark-theme-variables .config-card h3 {
+            color: var(--auto-text);
+            border-bottom-color: var(--auto-border);
         }
         
         .config-card h3 .material-symbols-sharp {
@@ -291,6 +334,10 @@ try {
             font-size: 0.9rem;
         }
         
+        body.dark-theme-variables .form-group label {
+            color: var(--auto-text);
+        }
+        
         .form-group input,
         .form-group textarea,
         .form-group select {
@@ -301,6 +348,14 @@ try {
             background: var(--color-white);
             font-size: 0.9rem;
             transition: border-color 0.3s ease;
+        }
+        
+        body.dark-theme-variables .form-group input,
+        body.dark-theme-variables .form-group textarea,
+        body.dark-theme-variables .form-group select {
+            background: var(--auto-input-bg);
+            color: var(--auto-text);
+            border-color: var(--auto-border);
         }
         
         .form-group input:focus,
@@ -342,6 +397,10 @@ try {
             border-radius: 34px;
         }
         
+        body.dark-theme-variables .slider {
+            background-color: #4a4a4a;
+        }
+        
         .slider:before {
             position: absolute;
             content: "";
@@ -369,6 +428,10 @@ try {
             margin-bottom: 1.5rem;
         }
         
+        body.dark-theme-variables .form-toggle label {
+            color: var(--auto-text);
+        }
+        
         .btn-save {
             background: linear-gradient(135deg, var(--color-primary), var(--color-danger));
             color: white;
@@ -382,6 +445,10 @@ try {
             gap: 0.5rem;
             transition: all 0.3s ease;
             font-size: 0.9rem;
+        }
+        
+        body.dark-theme-variables .btn-save {
+            box-shadow: 0 4px 15px rgba(255, 0, 212, 0.3);
         }
         
         .btn-save:hover {
@@ -563,10 +630,19 @@ try {
             border: 2px solid transparent;
             transition: all 0.3s ease;
         }
+        
+        body.dark-theme-variables .switch-container {
+            background: var(--auto-input-bg);
+            color: var(--auto-text);
+        }
 
         .switch-container.active {
             background: rgba(255, 0, 204, 0.05);
             border-color: var(--rosa-vibrante);
+        }
+        
+        body.dark-theme-variables .switch-container.active {
+            background: rgba(255, 0, 204, 0.1);
         }
 
         .switch-label {
@@ -575,6 +651,10 @@ try {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+        
+        body.dark-theme-variables .switch-label {
+            color: var(--auto-text);
         }
 
         .switch-label::before {
@@ -603,11 +683,22 @@ try {
             color: #64748b;
             border: 1px solid #e2e8f0;
         }
+        
+        body.dark-theme-variables .status-inactive {
+            background: #4a4a4a;
+            color: var(--auto-text);
+            border-color: var(--auto-border);
+        }
 
         .status-active {
             background: rgba(255, 0, 204, 0.1);
             color: var(--rosa-vibrante);
             border: 1px solid var(--rosa-vibrante);
+        }
+        
+        body.dark-theme-variables .status-active {
+            background: rgba(255, 0, 204, 0.2);
+            color: #ff40d6;
         }
 
         .toggle-switch {
@@ -727,6 +818,12 @@ try {
             transition: all 0.3s ease;
             border: 1px solid #e5e7eb;
         }
+        
+        body.dark-theme-variables .pill {
+            background: var(--auto-input-bg);
+            color: var(--auto-text);
+            border-color: var(--auto-border);
+        }
 
         .pill:hover {
             background: var(--rosa-vibrante);
@@ -773,6 +870,21 @@ try {
             background: linear-gradient(135deg, #e55a2b, #e8841a);
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+        
+        /* Ajustes globais para modo dark */
+        body.dark-theme-variables .template-item {
+            background: var(--auto-input-bg);
+            color: var(--auto-text);
+        }
+        
+        body.dark-theme-variables .variables-help {
+            background: var(--auto-input-bg);
+            color: var(--auto-text);
+        }
+        
+        body.dark-theme-variables .variables-help h4 {
+            color: var(--auto-text);
         }
     </style>
   </head>
