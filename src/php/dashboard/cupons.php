@@ -277,6 +277,18 @@ if ($result) {
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
+    <!-- Aplicar tema imediatamente -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('darkTheme');
+            if (savedTheme === 'true' || savedTheme === null) {
+                document.body.classList.add('dark-theme-variables');
+            } else {
+                document.body.classList.remove('dark-theme-variables');
+            }
+        })();
+    </script>
+    
     <!-- Scripts globais para funções dos botões -->
     <script>
         // Funções globais que devem estar disponíveis antes dos elementos
@@ -557,6 +569,25 @@ if ($result) {
     
     <title>Cupons de Desconto - D&Z</title>
     <style>
+        /* Variáveis CSS para modo dark */
+        :root {
+            --cupom-bg: #ffffff;
+            --cupom-text: #333333;
+            --cupom-border: #ddd;
+            --cupom-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --cupom-input-bg: #ffffff;
+            --cupom-modal-bg: #ffffff;
+        }
+        
+        body.dark-theme-variables {
+            --cupom-bg: #202528;
+            --cupom-text: #edeffd;
+            --cupom-border: rgba(255,255,255,0.1);
+            --cupom-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            --cupom-input-bg: #2a2d31;
+            --cupom-modal-bg: #202528;
+        }
+        
         /* Garantir que o layout principal funcione corretamente */
         .container {
             display: grid !important;
@@ -577,6 +608,14 @@ if ($result) {
             padding: 2rem 0;
         }
         
+        body.dark-theme-variables .cupons-container {
+            color: var(--cupom-text);
+        }
+        
+        body.dark-theme-variables .cupons-container {
+            color: var(--cupom-text);
+        }
+        
         .cupom-card {
             background: white;
             border-radius: 15px;
@@ -585,12 +624,21 @@ if ($result) {
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
+        body.dark-theme-variables .cupom-card {
+            background: var(--cupom-bg);
+            box-shadow: var(--cupom-shadow);
+        }
+        
         .cupom-card h2 {
             color: #333;
             margin-bottom: 1.5rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+        
+        body.dark-theme-variables .cupom-card h2 {
+            color: var(--cupom-text);
         }
         
         .form-group {
@@ -604,6 +652,85 @@ if ($result) {
             color: #555;
         }
         
+        body.dark-theme-variables .form-group label {
+            color: var(--cupom-text);
+        }
+        
+        small {
+            color: #666;
+        }
+        
+        body.dark-theme-variables small {
+            color: var(--cupom-text) !important;
+            opacity: 0.7;
+        }
+        
+        .text-muted {
+            color: #666;
+        }
+        
+        body.dark-theme-variables .text-muted {
+            color: var(--cupom-text) !important;
+            opacity: 0.7;
+        }
+        
+        .codigo-info {
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            display: block;
+        }
+        
+        body.dark-theme-variables .codigo-info {
+            color: var(--cupom-text) !important;
+            opacity: 0.8;
+        }
+        
+        .form-hint {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        body.dark-theme-variables .form-hint {
+            color: var(--cupom-text) !important;
+            opacity: 0.7;
+        }
+        
+        .table-date, .table-desc {
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+        
+        body.dark-theme-variables .table-date,
+        body.dark-theme-variables .table-desc {
+            color: var(--cupom-text) !important;
+            opacity: 0.7;
+        }
+        
+        input[type="date"] {
+            background: #ffffff;
+            color: #333;
+        }
+        
+        body.dark-theme-variables input[type="date"] {
+            background: var(--cupom-input-bg) !important;
+            color: var(--cupom-text) !important;
+            border-color: var(--cupom-border) !important;
+        }
+        
+        body.dark-theme-variables input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+        
+        /* Garantir que todos os elementos tenham cores corretas no modo dark */
+        body.dark-theme-variables * {
+            border-color: var(--cupom-border);
+        }
+        
+        body.dark-theme-variables label {
+            color: var(--cupom-text) !important;
+        }
+        
         .form-group input, .form-group select {
             width: 100%;
             padding: 0.75rem;
@@ -611,6 +738,15 @@ if ($result) {
             border-radius: 8px;
             font-size: 1rem;
             transition: border-color 0.3s;
+            background: #ffffff;
+            color: #333;
+        }
+        
+        body.dark-theme-variables .form-group input,
+        body.dark-theme-variables .form-group select {
+            background: var(--cupom-input-bg);
+            color: var(--cupom-text);
+            border-color: var(--cupom-border);
         }
         
         .form-group input:focus, .form-group select:focus {
@@ -639,6 +775,11 @@ if ($result) {
             font-size: 1rem;
         }
         
+        body.dark-theme-variables .btn-save {
+            background: #ff00cc;
+            box-shadow: 0 2px 10px rgba(255, 0, 204, 0.3);
+        }
+        
         .btn-save:hover {
             background: #e600b5;
             transform: translateY(-2px);
@@ -656,6 +797,11 @@ if ($result) {
             font-size: 1rem;
         }
         
+        body.dark-theme-variables .btn-cancel {
+            background: #4a4a4a;
+            color: var(--cupom-text);
+        }
+        
         .btn-cancel:hover {
             background: #545b62;
             transform: translateY(-2px);
@@ -671,10 +817,21 @@ if ($result) {
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
+        body.dark-theme-variables .cupons-table {
+            background: var(--cupom-bg);
+            box-shadow: var(--cupom-shadow);
+        }
+        
         .cupons-table th, .cupons-table td {
             padding: 1rem;
             text-align: left;
             border-bottom: 1px solid #eee;
+        }
+        
+        body.dark-theme-variables .cupons-table th,
+        body.dark-theme-variables .cupons-table td {
+            border-bottom-color: var(--cupom-border);
+            color: var(--cupom-text);
         }
         
         .cupons-table th {
@@ -682,6 +839,11 @@ if ($result) {
             font-weight: 600;
             color: #333;
             font-size: 0.9rem;
+        }
+        
+        body.dark-theme-variables .cupons-table th {
+            background: #2a2d31;
+            color: var(--cupom-text);
         }
         
         .cupons-table td {
@@ -836,14 +998,28 @@ if ($result) {
             transition: all 0.3s ease;
         }
         
+        body.dark-theme-variables .switch-container {
+            background: var(--cupom-input-bg);
+            color: var(--cupom-text);
+        }
+        
         .switch-container.active {
             background: rgba(255, 0, 204, 0.05);
             border-color: #ff00cc;
         }
         
+        body.dark-theme-variables .switch-container.active {
+            background: rgba(255, 0, 204, 0.1);
+            border-color: #ff40d6;
+        }
+        
         .switch-label {
             font-weight: 600;
             color: #374151;
+        }
+        
+        body.dark-theme-variables .switch-label {
+            color: var(--cupom-text);
         }
         
         .form-grid {
@@ -860,6 +1036,11 @@ if ($result) {
             border-radius: 8px;
             margin: 1rem 0;
             border-left: 4px solid #ff00cc;
+        }
+        
+        body.dark-theme-variables .campos-especiais {
+            background: var(--cupom-input-bg);
+            color: var(--cupom-text);
         }
         
         .campos-especiais.show {
@@ -909,6 +1090,11 @@ if ($result) {
             overflow-y: auto;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             animation: modalShow 0.3s ease;
+        }
+        
+        body.dark-theme-variables .modal-content {
+            background-color: var(--cupom-modal-bg);
+            color: var(--cupom-text);
         }
         
         @keyframes modalShow {
@@ -963,6 +1149,11 @@ if ($result) {
             border-top: 1px solid #dee2e6;
         }
         
+        body.dark-theme-variables .modal-footer {
+            background: #2a2d31;
+            border-top-color: var(--cupom-border);
+        }
+        
         .btn-cancel {
             background: #6c757d;
             color: white;
@@ -980,6 +1171,10 @@ if ($result) {
         .btn-cancel:hover {
             background: #5a6268;
             transform: translateY(-1px);
+        }
+        
+        body.dark-theme-variables .btn-cancel:hover {
+            background: #3a3a3a;
         }
     </style>
   </head>
@@ -1105,7 +1300,7 @@ if ($result) {
                   <input type="text" id="codigo" name="codigo" 
                          placeholder="Ex: BEMVINDA10" required>
                   <?php if (!empty($cupons)): ?>
-                    <small style="color: #666; font-size: 0.8rem; margin-top: 0.5rem; display: block;">
+                    <small class="codigo-info">
                       <strong>Códigos já utilizados:</strong> 
                       <?php 
                         $codigos_existentes = array_column($cupons, 'codigo');
@@ -1148,7 +1343,7 @@ if ($result) {
                   <label for="limite_uso_total">Limite Total</label>
                   <input type="number" min="1" id="limite_uso_total" 
                          name="limite_uso_total" value="100" required>
-                  <small style="color: #666; font-size: 0.8rem;">
+                  <small class="form-hint">
                     Quantas vezes o cupom pode ser usado
                   </small>
                 </div>
@@ -1157,7 +1352,7 @@ if ($result) {
                   <label for="limite_uso_cpf">Limite por CPF</label>
                   <input type="number" min="1" id="limite_uso_cpf" 
                          name="limite_uso_cpf" value="1" required>
-                  <small style="color: #666; font-size: 0.8rem;">
+                  <small class="form-hint">
                     Usos permitidos por CPF
                   </small>
                 </div>
@@ -1168,7 +1363,7 @@ if ($result) {
                   <label for="uso_diario">Uso Diário</label>
                   <input type="number" min="1" id="uso_diario" 
                          name="uso_diario" value="50" required>
-                  <small style="color: #666; font-size: 0.8rem;">
+                  <small class="form-hint">
                     Limite de usos por dia no site
                   </small>
                 </div>
@@ -1182,7 +1377,7 @@ if ($result) {
                     <option value="kits">Kits</option>
                     <option value="cuidados">Cuidados</option>
                   </select>
-                  <small style="color: #666; font-size: 0.8rem;">
+                  <small class="form-hint">
                     Restringir por categoria
                   </small>
                 </div>
@@ -1493,7 +1688,7 @@ if ($result) {
                                         <strong style="color: #ff00cc; font-size: 1rem;">
                                             <?= htmlspecialchars($cupom['codigo']) ?>
                                         </strong>
-                                        <small style="color: #6c757d; font-size: 0.8rem;">
+                                        <small class="table-date">
                                             Expira: <?= date('d/m/Y', strtotime($cupom['data_expiracao'])) ?>
                                         </small>
                                     </div>
@@ -1503,7 +1698,7 @@ if ($result) {
                                         <span style="font-size: 1.2rem;"><?= $tipo_icon ?></span>
                                         <div>
                                             <div style="font-weight: 600; color: #495057;"><?= $tipo_text ?></div>
-                                            <small style="color: #6c757d;"><?= $desconto_text ?></small>
+                                            <small class="table-desc"><?= $desconto_text ?></small>
                                         </div>
                                     </div>
                                 </td>
