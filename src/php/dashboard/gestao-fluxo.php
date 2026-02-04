@@ -279,6 +279,11 @@ try {
                     <h3>Produtos</h3>
                 </a>
 
+                <a href="cupons.php" id="cupons-link">
+                    <span class="material-symbols-sharp">sell</span>
+                    <h3>Cupons</h3>
+                </a>
+
                 <a href="gestao-fluxo.php" id="gestao-fluxo-link" class="active">
                     <span class="material-symbols-sharp">account_tree</span>
                     <h3>Gestão de Fluxo</h3>

@@ -215,6 +215,8 @@ try {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- FONT AWESOME -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" />
     <link rel="stylesheet" href="../../css/dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -820,6 +822,11 @@ try {
           <a href="products.php">
             <span class="material-symbols-sharp">Inventory</span>
             <h3>Produtos</h3>
+          </a>
+
+          <a href="cupons.php">
+            <span class="material-symbols-sharp">sell</span>
+            <h3>Cupons</h3>
           </a>
 
           <a href="gestao-fluxo.php">

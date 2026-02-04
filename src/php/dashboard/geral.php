@@ -627,6 +627,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loja_nome'])) {
             <h3>Produtos</h3>
           </a>
 
+          <a href="cupons.php">
+            <span class="material-symbols-sharp">sell</span>
+            <h3>Cupons</h3>
+          </a>
+
           <a href="gestao-fluxo.php">
             <span class="material-symbols-sharp">account_tree</span>
             <h3>Gestão de Fluxo</h3>

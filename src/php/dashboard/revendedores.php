@@ -616,10 +616,15 @@ if ($stats['total_leads'] > 0) {
                     <h3>Produtos</h3>
                 </a>
 
-                <a href="gestao-fluxo.php">
-                    <span class="material-symbols-sharp">account_tree</span>
-                    <h3>Gestão de Fluxo</h3>
-                </a>
+          <a href="cupons.php">
+            <span class="material-symbols-sharp">sell</span>
+            <h3>Cupons</h3>
+          </a>
+
+          <a href="gestao-fluxo.php">
+            <span class="material-symbols-sharp">account_tree</span>
+            <h3>Gestão de Fluxo</h3>
+          </a>
 
                 <div class="menu-item-container">
                   <a href="geral.php" class="menu-item-with-submenu">

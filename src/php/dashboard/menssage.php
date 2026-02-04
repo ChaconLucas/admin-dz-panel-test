@@ -738,6 +738,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_critical_alerts' && isset
             <h3>Produtos</h3>
           </a>
 
+          <a href="cupons.php">
+            <span class="material-symbols-sharp">sell</span>
+            <h3>Cupons</h3>
+          </a>
+
           <a href="gestao-fluxo.php">
             <span class="material-symbols-sharp">account_tree</span>
             <h3>Gestão de Fluxo</h3>
