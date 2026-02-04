@@ -4,45 +4,51 @@ const closeBtn = document.querySelector("#close-btn");
 const themeToggler = document.querySelector(".theme-toggler");
 
 //mostrar sidebar
-menuBtn.addEventListener("click", () => {
-  sideMenu.style.display = "block";
-});
+if (menuBtn) {
+  menuBtn.addEventListener("click", () => {
+    sideMenu.style.display = "block";
+  });
+}
 
 //fehcar sidebar
-closeBtn.addEventListener("click", () => {
-  sideMenu.style.display = "none";
-});
+if (closeBtn) {
+  closeBtn.addEventListener("click", () => {
+    sideMenu.style.display = "none";
+  });
+}
 
 //mudar tema
-themeToggler.addEventListener("click", () => {
-  // Adicionar um pequeno feedback visual
-  themeToggler.style.transform = "scale(0.95)";
-  setTimeout(() => {
-    themeToggler.style.transform = "scale(1)";
-  }, 100);
+if (themeToggler) {
+  themeToggler.addEventListener("click", () => {
+    // Adicionar um pequeno feedback visual
+    themeToggler.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      themeToggler.style.transform = "scale(1)";
+    }, 100);
 
-  // Mudança de tema com transição suave
-  document.body.classList.toggle("dark-theme-variables");
-  const isDark = document.body.classList.contains("dark-theme-variables");
+    // Mudança de tema com transição suave
+    document.body.classList.toggle("dark-theme-variables");
+    const isDark = document.body.classList.contains("dark-theme-variables");
 
-  // Persistir preferência
-  localStorage.setItem("darkTheme", isDark ? "true" : "false");
+    // Persistir preferência
+    localStorage.setItem("darkTheme", isDark ? "true" : "false");
 
-  // Animar os ícones do toggle
-  const sunIcon = themeToggler.querySelector("span:nth-child(1)");
-  const moonIcon = themeToggler.querySelector("span:nth-child(2)");
+    // Animar os ícones do toggle
+    const sunIcon = themeToggler.querySelector("span:nth-child(1)");
+    const moonIcon = themeToggler.querySelector("span:nth-child(2)");
 
-  sunIcon.classList.toggle("active");
-  moonIcon.classList.toggle("active");
+    sunIcon.classList.toggle("active");
+    moonIcon.classList.toggle("active");
 
-  // Adicionar uma pequena rotação aos ícones
-  sunIcon.style.transform = sunIcon.classList.contains("active")
-    ? "rotate(0deg)"
-    : "rotate(180deg)";
-  moonIcon.style.transform = moonIcon.classList.contains("active")
-    ? "rotate(0deg)"
-    : "rotate(-180deg)";
-});
+    // Adicionar uma pequena rotação aos ícones
+    sunIcon.style.transform = sunIcon.classList.contains("active")
+      ? "rotate(0deg)"
+      : "rotate(180deg)";
+    moonIcon.style.transform = moonIcon.classList.contains("active")
+      ? "rotate(0deg)"
+      : "rotate(-180deg)";
+  });
+}
 
 // Restore persisted theme on load
 document.addEventListener("DOMContentLoaded", () => {

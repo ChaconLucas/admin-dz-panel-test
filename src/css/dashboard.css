@@ -370,29 +370,19 @@ aside .sidebar,
 }
 
 .menu-item-container .submenu a:hover {
-  background: rgba(40, 167, 69, 0.08);
-  color: #28a745;
+  background: rgba(255, 0, 212, 0.08);
+  color: var(--color-primary);
 }
 
 .menu-item-container .submenu a:hover span,
 .menu-item-container .submenu a:hover h3 {
-  color: #28a745;
-}
-
-.menu-item-container .submenu a:hover {
-  background: rgba(40, 167, 69, 0.08);
-  color: #28a745;
-}
-
-.menu-item-container .submenu a:hover span,
-.menu-item-container .submenu a:hover h3 {
-  color: #28a745;
+  color: var(--color-primary);
 }
 
 /* Tema escuro - CORRIGIDO */
 body.dark-theme-variables .menu-item-container .submenu {
   background: #202528 !important; /* Fundo escuro específico */
-  border: 1px solid rgba(40, 167, 69, 0.4) !important;
+  border: 1px solid rgba(255, 0, 212, 0.4) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9) !important;
 }
 
@@ -410,13 +400,13 @@ body.dark-theme-variables .menu-item-container .submenu a h3 {
 }
 
 body.dark-theme-variables .menu-item-container .submenu a:hover {
-  background: rgba(40, 167, 69, 0.3) !important;
-  color: #28a745 !important;
+  background: rgba(255, 0, 212, 0.3) !important;
+  color: var(--color-primary) !important;
 }
 
 body.dark-theme-variables .menu-item-container .submenu a:hover span,
 body.dark-theme-variables .menu-item-container .submenu a:hover h3 {
-  color: #28a745 !important;
+  color: var(--color-primary) !important;
 }
 
 /* Item ativo no submenu - tema dark */

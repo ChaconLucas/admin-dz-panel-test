@@ -12,6 +12,9 @@ require_once 'helper-contador.php';
 // Incluir sistema de logs automático
 require_once '../auto_log.php';
 
+// Incluir sistema de email automático
+require_once 'email_automatico.php';
+
 // Incluir conexão com banco de dados
 require_once '../../../config/config.php';
 
@@ -133,7 +136,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     if (mysqli_stmt_execute($stmt)) {
                         registrar_log($conexao, "Adicionou novo cliente: $nome");
-                        $_SESSION['success_msg'] = "✅ Cliente '$nome' adicionado com sucesso!";
+                        
+                        // 🚀 DISPARAR EMAIL DE BOAS-VINDAS AUTOMATICAMENTE
+                        $cliente_id = mysqli_insert_id($conexao);
+                        enviarEmailAutomatico('novo_cliente', [
+                            'cliente_id' => $cliente_id,
+                            'nome' => $nome,
+                            'email' => $email
+                        ]);
+                        
+                        $_SESSION['success_msg'] = "✅ Cliente '$nome' adicionado com sucesso! Email de boas-vindas enviado.";
                     } else {
                         $_SESSION['error_msg'] = "❌ Erro ao adicionar cliente: " . mysqli_error($conexao);
                     }
