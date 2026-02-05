@@ -1311,15 +1311,17 @@ try {
         
         .modal-content {
             background-color: var(--color-white);
-            margin: 2% auto;
+            margin: 3vh auto;
             padding: 0;
             border-radius: 20px;
             width: 90%;
             max-width: 1200px;
-            max-height: 90vh;
-            overflow-y: auto;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             animation: modalSlideIn 0.3s ease;
+            overflow: hidden;
         }
         
         .modal-large {
@@ -1336,10 +1338,10 @@ try {
             background: linear-gradient(135deg, #ff00cc, #ff3d71);
             color: white;
             padding: 1.5rem 2rem;
-            border-radius: 20px 20px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
         
         .modal-header h2 {
@@ -1370,27 +1372,56 @@ try {
         
         .modal-body {
             padding: 2rem;
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #ff00cc #f0f0f0;
+        }
+
+        .modal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 3px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #ff00cc, #ff3d71);
+            border-radius: 3px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #ff3d71, #ff00cc);
         }
         
         .pedido-details-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .pedido-details-grid {
+                grid-template-columns: 1fr;
+            }
         }
         
         .detail-card {
             background: var(--color-white);
             border: 1px solid rgba(255,0,204,0.1);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             transition: all 0.3s ease;
+            height: fit-content;
         }
         
         .detail-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         
         .detail-card.full-width {
@@ -1399,34 +1430,34 @@ try {
         
         .detail-header {
             background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            padding: 1rem 1.5rem;
+            padding: 0.75rem 1rem;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
             border-bottom: 1px solid rgba(0,0,0,0.1);
         }
         
         .detail-header span {
             color: #ff00cc;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
         }
         
         .detail-header h3 {
             margin: 0;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 600;
             color: var(--color-dark);
         }
         
         .detail-content {
-            padding: 1.5rem;
+            padding: 1rem;
         }
         
         .info-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.75rem 0;
+            padding: 0.5rem 0;
             border-bottom: 1px solid rgba(0,0,0,0.05);
         }
         
@@ -1668,7 +1699,7 @@ try {
             display: flex;
             justify-content: flex-end;
             gap: 1rem;
-            border-radius: 0 0 20px 20px;
+            flex-shrink: 0;
         }
         
         .btn {
