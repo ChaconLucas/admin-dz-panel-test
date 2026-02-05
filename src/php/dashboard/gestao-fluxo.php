@@ -24,6 +24,7 @@ if ($conexao) {
         gerar_link_cobranca TINYINT(1) DEFAULT 0,
         sla_horas INT DEFAULT 0,
         mensagem_template TEXT,
+        mensagem_email TEXT,
         ordem INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -35,7 +36,8 @@ if ($conexao) {
     $alterQueries = [
         "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS estornar_estoque TINYINT(1) DEFAULT 0",
         "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS gerar_link_cobranca TINYINT(1) DEFAULT 0",
-        "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS sla_horas INT DEFAULT 0"
+        "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS sla_horas INT DEFAULT 0",
+        "ALTER TABLE status_fluxo ADD COLUMN IF NOT EXISTS mensagem_email TEXT"
     ];
     
     foreach ($alterQueries as $query) {
@@ -98,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $gerar_link_cobranca = isset($_POST['gerar_link_cobranca']) ? 1 : 0;
             $sla_horas = intval($_POST['sla_horas'] ?? 0);
             $mensagem_template = trim($_POST['mensagem_template'] ?? '');
+            $mensagem_email = trim($_POST['mensagem_email'] ?? '');
             
             if ($nome) {
                 // Obter próxima ordem
@@ -108,10 +111,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nextOrder = ($row['max_ordem'] ?? 0) + 1;
                 }
                 
-                $insertQuery = "INSERT INTO status_fluxo (nome, cor_hex, baixa_estoque, bloquear_edicao, gerar_logistica, notificar, estornar_estoque, gerar_link_cobranca, sla_horas, mensagem_template, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $insertQuery = "INSERT INTO status_fluxo (nome, cor_hex, baixa_estoque, bloquear_edicao, gerar_logistica, notificar, estornar_estoque, gerar_link_cobranca, sla_horas, mensagem_template, mensagem_email, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = mysqli_prepare($conexao, $insertQuery);
                 if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, "ssiiiiiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $estornar_estoque, $gerar_link_cobranca, $sla_horas, $mensagem_template, $nextOrder);
+                    mysqli_stmt_bind_param($stmt, "ssiiiiiiiissi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $estornar_estoque, $gerar_link_cobranca, $sla_horas, $mensagem_template, $mensagem_email, $nextOrder);
                     if (mysqli_stmt_execute($stmt)) {
                         registrar_log($conexao, "Adicionou novo status de fluxo: $nome");
                         // Implementar PRG (Post-Redirect-Get) para evitar resubmissão
@@ -144,12 +147,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $gerar_link_cobranca = isset($_POST['gerar_link_cobranca']) ? 1 : 0;
             $sla_horas = intval($_POST['sla_horas'] ?? 0);
             $mensagem_template = trim($_POST['mensagem_template'] ?? '');
+            $mensagem_email = trim($_POST['mensagem_email'] ?? '');
             
             if ($id && $nome) {
-                $updateQuery = "UPDATE status_fluxo SET nome = ?, cor_hex = ?, baixa_estoque = ?, bloquear_edicao = ?, gerar_logistica = ?, notificar = ?, estornar_estoque = ?, gerar_link_cobranca = ?, sla_horas = ?, mensagem_template = ? WHERE id = ?";
+                $updateQuery = "UPDATE status_fluxo SET nome = ?, cor_hex = ?, baixa_estoque = ?, bloquear_edicao = ?, gerar_logistica = ?, notificar = ?, estornar_estoque = ?, gerar_link_cobranca = ?, sla_horas = ?, mensagem_template = ?, mensagem_email = ? WHERE id = ?";
                 $stmt = mysqli_prepare($conexao, $updateQuery);
                 if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, "ssiiiiiiisi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $estornar_estoque, $gerar_link_cobranca, $sla_horas, $mensagem_template, $id);
+                    mysqli_stmt_bind_param($stmt, "ssiiiiiiissi", $nome, $cor_hex, $baixa_estoque, $bloquear_edicao, $gerar_logistica, $notificar, $estornar_estoque, $gerar_link_cobranca, $sla_horas, $mensagem_template, $mensagem_email, $id);
                     if (mysqli_stmt_execute($stmt)) {
                         registrar_log($conexao, "Atualizou status de fluxo: $nome (ID: $id)");
                         // Implementar PRG (Post-Redirect-Get) para evitar resubmissão
@@ -392,6 +396,7 @@ try {
                                     data-gerar-link-cobranca="<?= $status['gerar_link_cobranca'] ?? 0 ?>"
                                     data-sla-horas="<?= $status['sla_horas'] ?? 0 ?>"
                                     data-template="<?= htmlspecialchars($status['mensagem_template']) ?>"
+                                    data-mensagem-email="<?= htmlspecialchars($status['mensagem_email'] ?? '') ?>"
                                     style="background: var(--color-primary); color: white; border: none; padding: 0.5rem; border-radius: var(--border-radius-1); cursor: pointer; display: flex; align-items: center;">
                                     <span class="material-symbols-sharp" style="font-size: 1rem;">edit</span>
                                 </button>
@@ -459,15 +464,36 @@ try {
                             </div>
                         </div>
 
-                        <!-- Template de Mensagem -->
-                        <?php if ($status['notificar'] && $status['mensagem_template']): ?>
-                            <div style="margin-bottom: 1rem;">
-                                <h4 style="margin-bottom: 0.5rem; color: var(--color-dark); font-size: 0.9rem; font-weight: 600;">TEMPLATE DE MENSAGEM</h4>
-                                <div style="background: var(--color-background); padding: 0.75rem; border-radius: var(--border-radius-1); border-left: 4px solid <?= $status['cor_hex'] ?>; font-size: 0.8rem; color: var(--color-dark); line-height: 1.4;">
-                                    <?= nl2br(htmlspecialchars($status['mensagem_template'])) ?>
-                                </div>
-                                <small style="color: var(--color-info-dark); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-                                    Shortcodes disponíveis: {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}, {link_pagamento}, {nome_loja}, {data_estimada}
+                        <!-- Mensagens Configuradas -->
+                        <?php if ($status['notificar'] && ($status['mensagem_template'] || $status['mensagem_email'])): ?>
+                            <div style="margin-bottom: 1rem; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 1rem;">
+                                
+                                <?php if ($status['mensagem_email']): ?>
+                                    <div style="margin-bottom: 1rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span class="material-symbols-sharp" style="font-size: 1rem; color: var(--color-primary);">email</span>
+                                            <h4 style="margin: 0; color: var(--color-dark); font-size: 0.85rem; font-weight: 600;">MENSAGEM DE E-MAIL</h4>
+                                        </div>
+                                        <div style="background: rgba(255, 0, 204, 0.05); padding: 0.75rem; border-radius: var(--border-radius-1); border-left: 4px solid var(--color-primary); font-size: 0.8rem; color: var(--color-dark); line-height: 1.4;">
+                                            <?= nl2br(htmlspecialchars(substr($status['mensagem_email'], 0, 150) . (strlen($status['mensagem_email']) > 150 ? '...' : ''))) ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($status['mensagem_template']): ?>
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span class="material-symbols-sharp" style="font-size: 1rem; color: var(--color-info);">message</span>
+                                            <h4 style="margin: 0; color: var(--color-dark); font-size: 0.85rem; font-weight: 600;">TEMPLATE GENÉRICO</h4>
+                                        </div>
+                                        <div style="background: var(--color-background); padding: 0.75rem; border-radius: var(--border-radius-1); border-left: 4px solid <?= $status['cor_hex'] ?>; font-size: 0.8rem; color: var(--color-dark); line-height: 1.4;">
+                                            <?= nl2br(htmlspecialchars(substr($status['mensagem_template'], 0, 150) . (strlen($status['mensagem_template']) > 150 ? '...' : ''))) ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <small style="color: var(--color-info-dark); font-size: 0.75rem; display: block; background: rgba(255, 255, 255, 0.7); padding: 0.5rem; border-radius: 4px;">
+                                    <strong>💡 Variáveis:</strong> {nome_cliente}, {numero_pedido}, {valor_total}, {data_pedido}, {status_atual}
                                 </small>
                             </div>
                         <?php endif; ?>
@@ -634,13 +660,49 @@ try {
                     </div>
                 </div>
 
-                <!-- Template de Mensagem -->
+                <!-- Gestão de Mensagens -->
                 <div id="mensagemTemplateDiv" style="margin-bottom: 1.5rem; display: none;">
-                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Template de Mensagem (WhatsApp/E-mail)</label>
-                    <textarea name="mensagem_template" id="mensagemTemplate" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-info-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 0.9rem; resize: vertical;" placeholder="Ex: Olá {cliente}! Seu pedido #{id_pedido} mudou para {status}..."></textarea>
-                    <small style="color: var(--color-info-dark); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-                        <strong>Shortcodes disponíveis:</strong> {cliente}, {id_pedido}, {status}, {codigo_rastreio}, {link_rastreio}, {link_pagamento}, {nome_loja}, {data_estimada}
-                    </small>
+                    <div style="background: linear-gradient(135deg, rgba(255, 0, 204, 0.1), rgba(255, 0, 204, 0.05)); border: 2px solid rgba(255, 0, 204, 0.2); border-radius: var(--border-radius-2); padding: 1.5rem; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0 0 1rem 0; color: var(--color-primary); display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="material-symbols-sharp" style="font-size: 20px;">message</span>
+                            Gestão de Mensagens para este Status
+                        </h3>
+                        
+                        <!-- Mensagem de E-mail -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">
+                                <span class="material-symbols-sharp" style="font-size: 16px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-primary);">email</span>
+                                Mensagem de E-mail Personalizada
+                            </label>
+                            <textarea name="mensagem_email" id="mensagemEmail" rows="5" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-info-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 0.9rem; resize: vertical;" placeholder="Olá {nome_cliente}! Seu pedido #{numero_pedido} no valor de R$ {valor_total} foi atualizado..."></textarea>
+                            <div style="margin-top: 0.5rem;">
+                                <button type="button" onclick="inserirVariavelEmail('nome_cliente')" style="background: rgba(255, 0, 204, 0.1); border: 1px solid var(--color-primary); color: var(--color-primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin: 0.25rem 0.25rem 0.25rem 0; cursor: pointer;">{nome_cliente}</button>
+                                <button type="button" onclick="inserirVariavelEmail('numero_pedido')" style="background: rgba(255, 0, 204, 0.1); border: 1px solid var(--color-primary); color: var(--color-primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin: 0.25rem 0.25rem 0.25rem 0; cursor: pointer;">{numero_pedido}</button>
+                                <button type="button" onclick="inserirVariavelEmail('valor_total')" style="background: rgba(255, 0, 204, 0.1); border: 1px solid var(--color-primary); color: var(--color-primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin: 0.25rem 0.25rem 0.25rem 0; cursor: pointer;">{valor_total}</button>
+                                <button type="button" onclick="inserirVariavelEmail('data_pedido')" style="background: rgba(255, 0, 204, 0.1); border: 1px solid var(--color-primary); color: var(--color-primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin: 0.25rem 0.25rem 0.25rem 0; cursor: pointer;">{data_pedido}</button>
+                                <button type="button" onclick="inserirVariavelEmail('status_atual')" style="background: rgba(255, 0, 204, 0.1); border: 1px solid var(--color-primary); color: var(--color-primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin: 0.25rem 0.25rem 0.25rem 0; cursor: pointer;">{status_atual}</button>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Templates Prontos -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">
+                                <span class="material-symbols-sharp" style="font-size: 16px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-success);">auto_fix_high</span>
+                                Templates Prontos D&Z
+                            </label>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" onclick="aplicarTemplatePedidoConfirmado()" style="background: var(--color-success); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: var(--border-radius-1); font-size: 0.8rem; cursor: pointer;">Pedido Confirmado</button>
+                                <button type="button" onclick="aplicarTemplatePreparando()" style="background: var(--color-warning); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: var(--border-radius-1); font-size: 0.8rem; cursor: pointer;">Preparando Pedido</button>
+                                <button type="button" onclick="aplicarTemplateEnviado()" style="background: var(--color-info); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: var(--border-radius-1); font-size: 0.8rem; cursor: pointer;">Pedido Enviado</button>
+                                <button type="button" onclick="aplicarTemplateEntregue()" style="background: var(--color-primary); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: var(--border-radius-1); font-size: 0.8rem; cursor: pointer;">Pedido Entregue</button>
+                            </div>
+                        </div>
+
+                        <small style="color: var(--color-info-dark); font-size: 0.75rem; margin-top: 0.25rem; display: block; background: rgba(255, 255, 255, 0.7); padding: 0.5rem; border-radius: 4px;">
+                            <strong>🚀 Variáveis disponíveis:</strong> {nome_cliente}, {numero_pedido}, {valor_total}, {data_pedido}, {status_atual}<br>
+                            <strong>💡 Dica:</strong> Clique nos botões das variáveis para inseri-las automaticamente no texto!
+                        </small>
+                    </div>
                 </div>
 
                 <!-- Botões -->
@@ -784,7 +846,8 @@ try {
                         estornarEstoque: button.getAttribute('data-estornar-estoque') === '1',
                         gerarLinkCobranca: button.getAttribute('data-gerar-link-cobranca') === '1',
                         slaHoras: parseInt(button.getAttribute('data-sla-horas')) || 0,
-                        template: button.getAttribute('data-template') || ''
+                        template: button.getAttribute('data-template') || '',
+                        mensagemEmail: button.getAttribute('data-mensagem-email') || ''
                     };
                     
                     console.log('📊 Dados do status carregados:', statusData);
@@ -814,10 +877,15 @@ try {
                         setCheckboxValue('estornarEstoque', statusData.estornarEstoque);
                         setCheckboxValue('gerarLinkCobranca', statusData.gerarLinkCobranca);
                         
-                        // Preencher template
+                        // Preencher campos de template
                         const templateField = document.getElementById('mensagemTemplate');
                         if (templateField) {
                             templateField.value = statusData.template;
+                        }
+                        
+                        const emailField = document.getElementById('mensagemEmail');
+                        if (emailField) {
+                            emailField.value = statusData.mensagemEmail;
                         }
                         
                         // Atualizar preview e toggle
@@ -901,9 +969,21 @@ try {
                 }
             });
             
-            // Limpar template e SLA
-            document.getElementById('mensagemTemplate').value = '';
-            document.getElementById('slaHoras').value = '0';
+            // Limpar template, email e SLA com verificações de segurança
+            const templateField = document.getElementById('mensagemTemplate');
+            if (templateField) {
+                templateField.value = '';
+            }
+            
+            const emailField = document.getElementById('mensagemEmail');
+            if (emailField) {
+                emailField.value = '';
+            }
+            
+            const slaField = document.getElementById('slaHoras');
+            if (slaField) {
+                slaField.value = '0';
+            }
             
             // Reset do preview
             updateColorPreview('#ff00d4', 'Preview');
@@ -997,6 +1077,50 @@ try {
                 const shouldShow = checkbox.checked;
                 div.style.display = shouldShow ? 'block' : 'none';
                 console.log(`📧 Template de mensagem: ${shouldShow ? 'visível' : 'oculto'}`);
+            }
+        }
+
+        // Funções para inserir variáveis no campo de email
+        function inserirVariavelEmail(variavel) {
+            const emailField = document.getElementById('mensagemEmail');
+            if (emailField) {
+                const cursorPos = emailField.selectionStart;
+                const textBefore = emailField.value.substring(0, cursorPos);
+                const textAfter = emailField.value.substring(emailField.selectionEnd);
+                const novoTexto = textBefore + '{' + variavel + '}' + textAfter;
+                
+                emailField.value = novoTexto;
+                emailField.focus();
+                emailField.setSelectionRange(cursorPos + variavel.length + 2, cursorPos + variavel.length + 2);
+            }
+        }
+
+        // Templates prontos da D&Z
+        function aplicarTemplatePedidoConfirmado() {
+            const emailField = document.getElementById('mensagemEmail');
+            if (emailField) {
+                emailField.value = "🎉 Ótimas notícias, {nome_cliente}!\n\nSeu pedido #{numero_pedido} no valor de R$ {valor_total} foi confirmado e já está sendo processado!\n\n✨ Em breve você receberá mais atualizações sobre o andamento.\n\n💎 Obrigado por escolher a D&Z - sua beleza é nossa inspiração!\n\n#DZNails #UnhasPerfeitas";
+            }
+        }
+
+        function aplicarTemplatePreparando() {
+            const emailField = document.getElementById('mensagemEmail');
+            if (emailField) {
+                emailField.value = "💅 {nome_cliente}, estamos preparando sua encomenda!\n\nSeu pedido #{numero_pedido} está sendo cuidadosamente separado e preparado para envio.\n\n🎨 Cada item está sendo verificado para garantir a qualidade D&Z que você merece!\n\n⏰ Logo logo você receberá o código de rastreamento.\n\n✨ D&Z - Transformando sonhos em realidade!";
+            }
+        }
+
+        function aplicarTemplateEnviado() {
+            const emailField = document.getElementById('mensagemEmail');
+            if (emailField) {
+                emailField.value = "🚚 {nome_cliente}, seu pedido saiu para entrega!\n\nPedido #{numero_pedido} foi postado e está a caminho! 📦\n\n🔍 Acompanhe sua encomenda pelos Correios.\n\n⭐ Em breve você estará arrasando com os produtos D&Z!\n\n💖 Ansiosas para ver o resultado final!";
+            }
+        }
+
+        function aplicarTemplateEntregue() {
+            const emailField = document.getElementById('mensagemEmail');
+            if (emailField) {
+                emailField.value = "🎊 Parabéns {nome_cliente}!\n\nSeu pedido #{numero_pedido} foi entregue com sucesso! ✅\n\n💅 Agora é só arrasar com seus novos produtos D&Z!\n\n📸 Não esqueça de nos marcar nas suas fotos - adoramos ver vocês arrasando!\n\n⭐ Se possível, deixe sua avaliação. Isso nos ajuda muito!\n\n💎 D&Z - Sempre com você!";
             }
         }
 
