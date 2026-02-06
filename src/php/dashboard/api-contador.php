@@ -11,7 +11,7 @@ if (!isset($_SESSION['usuario_logado'])) {
 }
 
 // Incluir sistema
-require_once '../sistema.php';
+require_once __DIR__ . '/../sistema.php';
 global $conexao;
 
 header('Content-Type: application/json');

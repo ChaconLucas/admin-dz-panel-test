@@ -305,6 +305,105 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                     mysqli_stmt_bind_param($update_stmt, 'si', $novo_status, $pedido_id);
                     
                     if (mysqli_stmt_execute($update_stmt)) {
+                        
+                        // ========== CONTROLE COMPLETO DE ESTOQUE ==========
+                        // Verificar configurações do novo status
+                        $status_config_query = "SELECT baixa_estoque, estornar_estoque, bloquear_edicao, gerar_logistica, notificar FROM status_fluxo WHERE nome = ?";
+                        $status_config_stmt = mysqli_prepare($conexao, $status_config_query);
+                        if ($status_config_stmt) {
+                            mysqli_stmt_bind_param($status_config_stmt, 's', $novo_status);
+                            mysqli_stmt_execute($status_config_stmt);
+                            $status_config_result = mysqli_stmt_get_result($status_config_stmt);
+                            $status_config = mysqli_fetch_assoc($status_config_result);
+                            
+                            // Processar estoque se há configuração
+                            if ($status_config) {
+                                // Buscar todos os itens do pedido
+                                $itens_query = "SELECT produto_id, quantidade FROM itens_pedido WHERE pedido_id = ?";
+                                $itens_stmt = mysqli_prepare($conexao, $itens_query);
+                                if ($itens_stmt) {
+                                    mysqli_stmt_bind_param($itens_stmt, 'i', $pedido_id);
+                                    mysqli_stmt_execute($itens_stmt);
+                                    $itens_result = mysqli_stmt_get_result($itens_stmt);
+                                    
+                                    // === BAIXA DE ESTOQUE ===
+                                    if ($status_config['baixa_estoque'] == 1) {
+                                        // Baixar estoque para cada item
+                                        while ($item = mysqli_fetch_assoc($itens_result)) {
+                                            $produto_id = $item['produto_id'];
+                                            $quantidade = $item['quantidade'];
+                                            
+                                            // Atualizar estoque do produto (não pode ficar negativo)
+                                            $update_estoque_query = "UPDATE produtos SET estoque = GREATEST(0, estoque - ?) WHERE id = ?";
+                                            $update_estoque_stmt = mysqli_prepare($conexao, $update_estoque_query);
+                                            if ($update_estoque_stmt) {
+                                                mysqli_stmt_bind_param($update_estoque_stmt, 'ii', $quantidade, $produto_id);
+                                                mysqli_stmt_execute($update_estoque_stmt);
+                                                
+                                                // Log da baixa de estoque
+                                                error_log("🔽 BAIXA ESTOQUE: Produto ID $produto_id - Baixa de $quantidade unidades (Status: $novo_status)");
+                                            }
+                                        }
+                                    }
+                                    
+                                    // === ESTORNO DE ESTOQUE ===
+                                    if ($status_config['estornar_estoque'] == 1) {
+                                        // Resetar ponteiro para processar itens novamente
+                                        mysqli_data_seek($itens_result, 0);
+                                        
+                                        // Estornar estoque para cada item
+                                        while ($item = mysqli_fetch_assoc($itens_result)) {
+                                            $produto_id = $item['produto_id'];
+                                            $quantidade = $item['quantidade'];
+                                            
+                                            // Devolver estoque do produto
+                                            $update_estoque_query = "UPDATE produtos SET estoque = estoque + ? WHERE id = ?";
+                                            $update_estoque_stmt = mysqli_prepare($conexao, $update_estoque_query);
+                                            if ($update_estoque_stmt) {
+                                                mysqli_stmt_bind_param($update_estoque_stmt, 'ii', $quantidade, $produto_id);
+                                                mysqli_stmt_execute($update_estoque_stmt);
+                                                
+                                                // Log do estorno de estoque
+                                                error_log("🔼 ESTORNO ESTOQUE: Produto ID $produto_id - Devolvendo $quantidade unidades (Status: $novo_status)");
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Sincronizar estoque de produtos com variações (se aplicável)
+                                    include_once 'helper-sincronizar-estoque.php';
+                                    if (function_exists('sincronizarEstoqueProdutosVariacoes')) {
+                                        sincronizarEstoqueProdutosVariacoes($conexao);
+                                    }
+                                }
+                                
+                                // === OUTRAS FUNCIONALIDADES DO FLUXO ===
+                                
+                                // Gerar logística automática se configurado
+                                if ($status_config['gerar_logistica'] == 1) {
+                                    error_log("📦 LOGÍSTICA: Gerando etiqueta/rastreio para pedido $pedido_id (Status: $novo_status)");
+                                    // Aqui você pode implementar integração com correios, transportadoras, etc.
+                                }
+                                
+                                // Notificar cliente se configurado
+                                if ($status_config['notificar'] == 1) {
+                                    error_log("📧 NOTIFICAÇÃO: Cliente será notificado sobre mudança de status (Pedido: $pedido_id, Status: $novo_status)");
+                                    // A notificação por email já está implementada abaixo
+                                }
+                                
+                                // Bloquear edição do pedido se configurado
+                                if ($status_config['bloquear_edicao'] == 1) {
+                                    $update_bloqueio = "UPDATE pedidos SET bloqueado_edicao = 1 WHERE id = ?";
+                                    $update_bloqueio_stmt = mysqli_prepare($conexao, $update_bloqueio);
+                                    if ($update_bloqueio_stmt) {
+                                        mysqli_stmt_bind_param($update_bloqueio_stmt, 'i', $pedido_id);
+                                        mysqli_stmt_execute($update_bloqueio_stmt);
+                                        error_log("🔒 BLOQUEIO: Pedido $pedido_id bloqueado para edição (Status: $novo_status)");
+                                    }
+                                }
+                            }
+                        }
+                        // ========== FIM CONTROLE COMPLETO DE ESTOQUE ==========
+                        
                         // Buscar dados do cliente para envio de email
                         $cliente_query = "SELECT c.nome, c.email FROM clientes c JOIN pedidos p ON c.id = p.cliente_id WHERE p.id = ?";
                         $cliente_stmt = mysqli_prepare($conexao, $cliente_query);
@@ -1753,6 +1852,89 @@ try {
                 padding: 0.5rem;
             }
         }
+
+
+
+        body.dark-theme-variables .btn-secondary {
+            background: var(--color-dark-variant) !important;
+            border-color: rgba(255,255,255,0.2) !important;
+            color: var(--color-white) !important;
+        }
+
+        /* Melhorar legibilidade do texto dos valores monetários */
+        body.dark-theme-variables .price-value {
+            color: var(--color-success) !important;
+            font-weight: bold !important;
+        }
+
+        body.dark-theme-variables .shipping-info {
+            background: var(--color-dark-variant) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            color: var(--color-white) !important;
+        }
+
+        /* Melhorar botões de ação no modal */
+        body.dark-theme-variables .modal-footer {
+            background: var(--color-background-dark) !important;
+            border-top: 1px solid rgba(255,255,255,0.1) !important;
+        }
+
+        body.dark-theme-variables .btn-success {
+            background: var(--color-success) !important;
+            border-color: var(--color-success) !important;
+            color: var(--color-white) !important;
+        }
+
+        body.dark-theme-variables .btn-success:hover {
+            background: #1e7e34 !important;
+            border-color: #1e7e34 !important;
+        }
+
+        body.dark-theme-variables .btn-primary:hover {
+            background: #e600b8 !important;
+            border-color: #e600b8 !important;
+        }
+
+        body.dark-theme-variables .btn-secondary:hover {
+            background: var(--color-info-dark) !important;
+            border-color: rgba(255,255,255,0.3) !important;
+        }
+
+        /* Status badge específico */
+        body.dark-theme-variables .status-current {
+            background: rgba(255, 0, 204, 0.2) !important;
+            border: 1px solid #ff00cc !important;
+            color: var(--color-white) !important;
+            padding: 0.5rem 1rem !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+        }
+
+        /* Melhorar select de alteração de status */
+        body.dark-theme-variables .status-change-container {
+            background: var(--color-dark-variant) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            border-radius: 8px !important;
+            padding: 1rem !important;
+        }
+
+        body.dark-theme-variables .status-change-container label {
+            color: var(--color-white) !important;
+            font-weight: 600 !important;
+        }
+
+        /* Melhorar timeline de histórico */
+        body.dark-theme-variables .timeline-date {
+            color: var(--color-info-light) !important;
+        }
+
+        body.dark-theme-variables .timeline-status {
+            background: rgba(255, 0, 204, 0.2) !important;
+            color: var(--color-white) !important;
+            border: 1px solid #ff00cc !important;
+        }
+        
+        /* ==================== FIM MODO ESCURO ==================== */
     </style>
   </head>
   <body>
