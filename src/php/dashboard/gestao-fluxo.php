@@ -538,6 +538,39 @@ try {
     </div>
 
     <style>
+        /* Scrollbar customizada para o modal */
+        #statusModal .modal-content::-webkit-scrollbar,
+        #statusModal > div > div:last-child::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #statusModal .modal-content::-webkit-scrollbar-track,
+        #statusModal > div > div:last-child::-webkit-scrollbar-track {
+            background: rgba(255, 0, 204, 0.05);
+            border-radius: 10px;
+            margin: 5px 0;
+        }
+        
+        #statusModal .modal-content::-webkit-scrollbar-thumb,
+        #statusModal > div > div:last-child::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--color-primary), #e0009a);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 4px rgba(255, 0, 204, 0.2);
+        }
+        
+        #statusModal .modal-content::-webkit-scrollbar-thumb:hover,
+        #statusModal > div > div:last-child::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #e0009a, #c7007d);
+            box-shadow: 0 4px 8px rgba(255, 0, 204, 0.3);
+            transform: scale(1.1);
+        }
+        
+        #statusModal .modal-content::-webkit-scrollbar-thumb:active,
+        #statusModal > div > div:last-child::-webkit-scrollbar-thumb:active {
+            background: linear-gradient(135deg, #c7007d, #a5006a);
+        }
+        
         /* Animação para checkboxes */
         .regra-negocio.active .custom-checkbox {
             background: var(--color-primary);
@@ -564,6 +597,12 @@ try {
             #statusModal > div > div:last-child {
                 padding: 1rem !important;
                 max-height: calc(100vh - 6rem) !important;
+            }
+            
+            /* Scrollbar mais fina no mobile */
+            #statusModal .modal-content::-webkit-scrollbar,
+            #statusModal > div > div:last-child::-webkit-scrollbar {
+                width: 5px;
             }
         }
         
