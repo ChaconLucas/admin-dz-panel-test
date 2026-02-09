@@ -538,25 +538,6 @@ try {
     </div>
 
     <style>
-        /* Estilo para área de regras de negócio */
-        .regras-container::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .regras-container::-webkit-scrollbar-track {
-            background: rgba(255, 0, 204, 0.1);
-            border-radius: 3px;
-        }
-        
-        .regras-container::-webkit-scrollbar-thumb {
-            background: var(--color-primary);
-            border-radius: 3px;
-        }
-        
-        .regras-container::-webkit-scrollbar-thumb:hover {
-            background: #e0009a;
-        }
-        
         /* Animação para checkboxes */
         .regra-negocio.active .custom-checkbox {
             background: var(--color-primary);
@@ -583,10 +564,6 @@ try {
             #statusModal > div > div:last-child {
                 padding: 1rem !important;
                 max-height: calc(100vh - 6rem) !important;
-            }
-            
-            .regras-container {
-                max-height: 300px !important;
             }
         }
         
@@ -647,7 +624,7 @@ try {
                             <span class="material-symbols-sharp" style="font-size: 18px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-primary);">settings</span>
                             Regras de Negócio
                         </label>
-                        <div class="regras-container" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 400px; overflow-y: auto; padding: 1rem; background: rgba(255, 0, 204, 0.02); border-radius: var(--border-radius-2); border: 1px solid rgba(255, 0, 204, 0.1);">
+                        <div class="regras-container" style="display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; background: rgba(255, 0, 204, 0.02); border-radius: var(--border-radius-2); border: 1px solid rgba(255, 0, 204, 0.1);">
                             <!-- Baixar Estoque -->
                             <div class="regra-negocio" data-checkbox="baixaEstoque" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-1); border: 2px solid var(--color-light); transition: all 0.3s ease; background: var(--color-white); position: relative; min-height: 60px;" onmouseover="this.style.borderColor='var(--color-primary)'; this.style.boxShadow='0 2px 10px rgba(255, 0, 204, 0.1)';" onmouseout="this.style.borderColor='var(--color-light)'; this.style.boxShadow='none';">
                                 <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white); flex-shrink: 0; margin-top: 2px;">
