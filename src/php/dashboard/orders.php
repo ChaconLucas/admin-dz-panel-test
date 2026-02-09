@@ -2062,39 +2062,112 @@ try {
             border: 1px solid #ff00cc !important;
         }
 
-        /* Estilos das abas no modo escuro */
-        body.dark-theme-variables .tab {
-            color: var(--color-dark) !important; /* Texto branco no modo escuro */
+        /* Estilos das abas no modo escuro - CORRIGIDO */
+        body.dark-theme-variables .tab,
+        body.dark-theme-variables .tabs-wrapper .tab {
+            color: #edeffd !important; /* Texto branco no modo escuro */
         }
 
-        body.dark-theme-variables .tab-text {
-            color: var(--color-dark) !important; /* Texto das abas branco */
+        body.dark-theme-variables .tab-text,
+        body.dark-theme-variables .tabs-wrapper .tab-text {
+            color: #edeffd !important; /* Texto das abas branco */
         }
 
-        body.dark-theme-variables .tab-icon .material-symbols-sharp {
-            color: var(--color-dark) !important; /* Ícones das abas brancos */
+        body.dark-theme-variables .tab-icon .material-symbols-sharp,
+        body.dark-theme-variables .tabs-wrapper .tab-icon .material-symbols-sharp {
+            color: #edeffd !important; /* Ícones das abas brancos */
         }
 
-        body.dark-theme-variables .tab:hover {
+        body.dark-theme-variables .tab:hover,
+        body.dark-theme-variables .tabs-wrapper .tab:hover {
             background: rgba(255,0,204,0.1) !important; /* Hover mais visível no escuro */
-            color: var(--color-dark) !important;
+            color: #edeffd !important;
         }
 
         body.dark-theme-variables .tab:hover .tab-text,
-        body.dark-theme-variables .tab:hover .tab-icon .material-symbols-sharp {
+        body.dark-theme-variables .tab:hover .tab-icon .material-symbols-sharp,
+        body.dark-theme-variables .tabs-wrapper .tab:hover .tab-text,
+        body.dark-theme-variables .tabs-wrapper .tab:hover .tab-icon .material-symbols-sharp {
             color: var(--color-primary) !important; /* Cor pink no hover */
         }
 
-        body.dark-theme-variables .tab-count {
+        body.dark-theme-variables .tab-count,
+        body.dark-theme-variables .tabs-wrapper .tab-count {
             background: rgba(255,255,255,0.1) !important;
-            color: var(--color-dark) !important; /* Texto do contador branco */
+            color: #edeffd !important; /* Texto do contador branco */
         }
 
         /* Aba ativa no modo escuro mantém as cores originais */
         body.dark-theme-variables .tab.active .tab-text,
         body.dark-theme-variables .tab.active .tab-icon .material-symbols-sharp,
-        body.dark-theme-variables .tab.active .tab-count {
+        body.dark-theme-variables .tab.active .tab-count,
+        body.dark-theme-variables .tabs-wrapper .tab.active .tab-text,
+        body.dark-theme-variables .tabs-wrapper .tab.active .tab-icon .material-symbols-sharp,
+        body.dark-theme-variables .tabs-wrapper .tab.active .tab-count {
             color: white !important; /* Mantém branco na aba ativa */
+        }
+
+        /* ====== MODAL DE DETALHES - MODO ESCURO ====== */
+        body.dark-theme-variables .modal-content {
+            background: var(--color-white) !important;
+            color: var(--color-dark) !important;
+        }
+
+        body.dark-theme-variables .modal-header {
+            background: var(--color-white) !important;
+            border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        }
+
+        body.dark-theme-variables .modal-header h2 {
+            color: var(--color-dark) !important;
+        }
+
+        body.dark-theme-variables .detail-card {
+            background: #2c2f33 !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+        }
+
+        body.dark-theme-variables .detail-header h3 {
+            color: var(--color-dark) !important;
+        }
+
+        body.dark-theme-variables .detail-header .material-symbols-sharp {
+            color: var(--color-primary) !important;
+        }
+
+        body.dark-theme-variables .info-row strong,
+        body.dark-theme-variables .info-row span,
+        body.dark-theme-variables #previsao-entrega {
+            color: var(--color-dark) !important; /* SLA/Previsão de entrega branco */
+        }
+
+        body.dark-theme-variables .items-table {
+            background: #2c2f33 !important;
+        }
+
+        body.dark-theme-variables .items-table thead th {
+            background: rgba(255,0,204,0.1) !important;
+            color: var(--color-dark) !important;
+        }
+
+        body.dark-theme-variables .items-table tbody td {
+            color: var(--color-dark) !important;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+
+        body.dark-theme-variables .order-totals .total-row strong,
+        body.dark-theme-variables .order-totals .total-row span {
+            color: var(--color-dark) !important;
+        }
+
+        body.dark-theme-variables .status-select {
+            background: #2c2f33 !important;
+            color: var(--color-dark) !important;
+            border-color: rgba(255,255,255,0.2) !important;
+        }
+
+        body.dark-theme-variables .status-timeline {
+            color: var(--color-dark) !important;
         }
         
         /* ==================== FIM MODO ESCURO ==================== */
