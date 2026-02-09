@@ -73,12 +73,26 @@ function buscarPedidos($conexao, $filtros = []) {
     
     // Filtro de status
     if (!empty($filtros['status'])) {
-        if ($filtros['status'] == 'reembolso') {
-            $where[] = "(p.status LIKE '%reembolso%' OR p.status LIKE '%estornado%')";
-        } else {
-            $where[] = "p.status = ?";
-            $params[] = $filtros['status'];
-            $types .= 's';
+        $status_filtro = strtoupper($filtros['status']);
+        
+        switch($status_filtro) {
+            case 'AGUARDANDO':
+                $where[] = "(UPPER(p.status) LIKE '%AGUARDANDO%' OR UPPER(p.status) LIKE '%PENDENTE%')";
+                break;
+            case 'CONFIRMADO':
+                $where[] = "(UPPER(p.status) LIKE '%CONFIRMADO%' OR UPPER(p.status) LIKE '%PAGO%')";
+                break;
+            case 'ENVIADO':
+                $where[] = "(UPPER(p.status) LIKE '%ENVIADO%' OR UPPER(p.status) LIKE '%ENTREGUE%')";
+                break;
+            case 'ESTORNADO':
+                $where[] = "(UPPER(p.status) LIKE '%ESTORNADO%' OR UPPER(p.status) LIKE '%REEMBOLSO%')";
+                break;
+            default:
+                $where[] = "UPPER(p.status) = ?";
+                $params[] = $status_filtro;
+                $types .= 's';
+                break;
         }
     }
     
@@ -185,7 +199,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     
     switch ($_POST['action']) {
         case 'buscar_pedidos':
-            // Consulta melhorada com produtos
+            // DEBUG: Verificar status disponíveis no banco
+            $debug_status = mysqli_query($conexao, "SELECT DISTINCT status FROM pedidos ORDER BY status");
+            $status_existentes = [];
+            if ($debug_status) {
+                while($row = mysqli_fetch_row($debug_status)) {
+                    $status_existentes[] = $row[0];
+                }
+                error_log("Status existentes no banco: " . implode(', ', $status_existentes));
+                error_log("Status filtro recebido: " . ($_POST['status'] ?? 'vazio'));
+            }
+            
+            // Aplicar filtros baseados no status selecionado
+            $where_conditions = [];
+            $status_filtro = $_POST['status'] ?? '';
+            
+            if (!empty($status_filtro) && $status_filtro !== 'todos') {
+                switch(strtoupper($status_filtro)) {
+                    case 'AGUARDANDO':
+                        $where_conditions[] = "(UPPER(p.status) LIKE '%AGUARDANDO%' OR UPPER(p.status) LIKE '%PENDENTE%')";
+                        break;
+                    case 'CONFIRMADO':
+                        $where_conditions[] = "(UPPER(p.status) LIKE '%CONFIRMADO%' OR UPPER(p.status) LIKE '%PAGO%')";
+                        break;
+                    case 'EM_PREPARACAO':
+                        $where_conditions[] = "(UPPER(p.status) LIKE '%PREPARAÇÃO%' OR UPPER(p.status) LIKE '%PREPARA%' OR UPPER(p.status) LIKE '%EM PREPARAÇÃO%')";
+                        break;
+                    case 'ENVIADO':
+                        $where_conditions[] = "(UPPER(p.status) LIKE '%ENVIADO%' OR UPPER(p.status) LIKE '%ENTREGUE%')";
+                        break;
+                    case 'ESTORNADO':
+                        $where_conditions[] = "(UPPER(p.status) LIKE '%ESTORNADO%' OR UPPER(p.status) LIKE '%REEMBOLSO%')";
+                        break;
+                }
+            }
+            
+            // Aplicar filtros adicionais de data e busca
+            if (!empty($_POST['data_inicio'])) {
+                $where_conditions[] = "DATE(p.data_pedido) >= '" . mysqli_real_escape_string($conexao, $_POST['data_inicio']) . "'";
+            }
+            
+            if (!empty($_POST['data_fim'])) {
+                $where_conditions[] = "DATE(p.data_pedido) <= '" . mysqli_real_escape_string($conexao, $_POST['data_fim']) . "'";
+            }
+            
+            if (!empty($_POST['busca'])) {
+                $busca = mysqli_real_escape_string($conexao, $_POST['busca']);
+                $where_conditions[] = "(c.nome LIKE '%$busca%' OR p.id LIKE '%$busca%')";
+            }
+            
+            // Construir cláusula WHERE
+            $where_clause = '';
+            if (!empty($where_conditions)) {
+                $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
+            }
+            
+            // Consulta melhorada com produtos e filtros
             $sql_com_produtos = "
                 SELECT 
                     p.id,
@@ -203,12 +272,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 LEFT JOIN clientes c ON p.cliente_id = c.id 
                 LEFT JOIN itens_pedido ip ON p.id = ip.pedido_id
                 LEFT JOIN produtos pr ON ip.produto_id = pr.id
+                $where_clause
                 GROUP BY p.id
                 ORDER BY p.data_pedido DESC 
-                LIMIT 20
+                LIMIT 100
             ";
             
             $result_com_produtos = mysqli_query($conexao, $sql_com_produtos);
+            
+            // Debug detalhado
+            error_log("=== DEBUG FILTROS ===");
+            error_log("Status filtro: $status_filtro");
+            error_log("SQL gerado: " . str_replace("\n", " ", $sql_com_produtos));
+            error_log("Número de registros encontrados: " . ($result_com_produtos ? mysqli_num_rows($result_com_produtos) : 0));
             
             // Buscar cores dos status da gestão de fluxo com fallback
             $cores_status = [
@@ -237,13 +313,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             $cores_especificas = [
                 'PAGAMENTO CONFIRMADO' => '#41f1b6',
                 'Pagamento Confirmado' => '#41f1b6', 
-                'EM PREPARAÇÃO' => '#7dd87d',
-                'Em Preparação' => '#7dd87d',
+                'EM PREPARAÇÃO' => '#ffbb55',
+                'Em Preparação' => '#ffbb55',
                 'ENTREGUE' => '#28a745', 
-                'Entregue' => '#28a745',
-                'PEDIDO RECEBIDO' => '#ff00cc',
-                'Pedido Recebido' => '#ff00cc',
-                'ESTORNADO' => '#fd7e14',
                 'Estornado' => '#fd7e14'
             ];
             
@@ -277,7 +349,63 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             }
             
             error_log("Query com produtos encontrou: " . count($pedidos_completos) . " pedidos");
-            echo json_encode(['success' => true, 'pedidos' => $pedidos_completos]);
+            
+            // Calcular contadores para as abas aplicando filtros de data e busca (mas sem filtro de status)
+            $count_where_conditions = [];
+            
+            // Aplicar apenas filtros de data e busca (não status)
+            if (!empty($_POST['data_inicio'])) {
+                $count_where_conditions[] = "DATE(data_pedido) >= '" . mysqli_real_escape_string($conexao, $_POST['data_inicio']) . "'";
+            }
+            
+            if (!empty($_POST['data_fim'])) {
+                $count_where_conditions[] = "DATE(data_pedido) <= '" . mysqli_real_escape_string($conexao, $_POST['data_fim']) . "'";
+            }
+            
+            if (!empty($_POST['busca'])) {
+                $busca = mysqli_real_escape_string($conexao, $_POST['busca']);
+                $count_where_conditions[] = "(cliente_id IN (SELECT id FROM clientes WHERE nome LIKE '%$busca%') OR id LIKE '%$busca%')";
+            }
+            
+            $count_where_clause = '';
+            if (!empty($count_where_conditions)) {
+                $count_where_clause = 'WHERE ' . implode(' AND ', $count_where_conditions);
+            }
+            
+            $count_sql = "SELECT status, COUNT(*) as count FROM pedidos $count_where_clause GROUP BY status";
+            $count_result = mysqli_query($conexao, $count_sql);
+            
+            $contadores = [
+                'todos' => 0,
+                'pendente' => 0,
+                'confirmado' => 0,
+                'preparacao' => 0,
+                'enviado' => 0,
+                'reembolso' => 0
+            ];
+            
+            // Contar total e categorizar
+            if ($count_result) {
+                while ($row = mysqli_fetch_assoc($count_result)) {
+                    $status = strtoupper($row['status']);
+                    $count = intval($row['count']);
+                    $contadores['todos'] += $count;
+                    
+                    if (strpos($status, 'AGUARDANDO') !== false || strpos($status, 'PENDENTE') !== false) {
+                        $contadores['pendente'] += $count;
+                    } elseif (strpos($status, 'CONFIRMADO') !== false || strpos($status, 'PAGO') !== false) {
+                        $contadores['confirmado'] += $count;
+                    } elseif (strpos($status, 'PREPARAÇÃO') !== false || strpos($status, 'PREPARA') !== false) {
+                        $contadores['preparacao'] += $count;
+                    } elseif (strpos($status, 'ENVIADO') !== false || strpos($status, 'ENTREGUE') !== false) {
+                        $contadores['enviado'] += $count;
+                    } elseif (strpos($status, 'ESTORNADO') !== false || strpos($status, 'REEMBOLSO') !== false) {
+                        $contadores['reembolso'] += $count;
+                    }
+                }
+            }
+            
+            echo json_encode(['success' => true, 'pedidos' => $pedidos_completos, 'contadores' => $contadores]);
             exit;
             
         case 'atualizar_status':
@@ -2104,28 +2232,35 @@ try {
                     <span class="tab-text">Todos</span>
                     <div class="tab-count" id="count-todos">0</div>
                 </div>
-                <div class="tab" onclick="trocarAba('pendente')">
+                <div class="tab" onclick="trocarAba('AGUARDANDO')">
                     <div class="tab-icon">
                         <span class="material-symbols-sharp">schedule</span>
                     </div>
                     <span class="tab-text">Aguardando</span>
                     <div class="tab-count" id="count-pendente">0</div>
                 </div>
-                <div class="tab" onclick="trocarAba('Pagamento Confirmado')">
+                <div class="tab" onclick="trocarAba('CONFIRMADO')">
                     <div class="tab-icon">
                         <span class="material-symbols-sharp">check_circle</span>
                     </div>
                     <span class="tab-text">Confirmados</span>
                     <div class="tab-count" id="count-confirmado">0</div>
                 </div>
-                <div class="tab" onclick="trocarAba('Enviado')">
+                <div class="tab" onclick="trocarAba('EM_PREPARACAO')">
+                    <div class="tab-icon">
+                        <span class="material-symbols-sharp">engineering</span>
+                    </div>
+                    <span class="tab-text">Em Preparação</span>
+                    <div class="tab-count" id="count-preparacao">0</div>
+                </div>
+                <div class="tab" onclick="trocarAba('ENVIADO')">
                     <div class="tab-icon">
                         <span class="material-symbols-sharp">local_shipping</span>
                     </div>
                     <span class="tab-text">Enviados</span>
                     <div class="tab-count" id="count-enviado">0</div>
                 </div>
-                <div class="tab" onclick="trocarAba('reembolso')">
+                <div class="tab" onclick="trocarAba('ESTORNADO')">
                     <div class="tab-icon">
                         <span class="material-symbols-sharp">currency_exchange</span>
                     </div>
@@ -2504,6 +2639,8 @@ let abaAtiva = 'todos';
 function trocarAba(status) {
     abaAtiva = status;
     
+    console.log(`🎯 Trocando para aba: ${status}`);
+    
     // Atualizar visual das abas com animação suave
     document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.remove('active');
@@ -2517,9 +2654,9 @@ function trocarAba(status) {
     const tbody = document.getElementById('pedidos-tbody');
     tbody.innerHTML = `
         <tr>
-            <td colspan="6" class="loading">
+            <td colspan="7" class="loading">
                 <span class="material-symbols-sharp">refresh</span>
-                Carregando pedidos...
+                Filtrando pedidos ${status !== 'todos' ? 'com status: ' + status.toLowerCase() : ''}...
             </td>
         </tr>
     `;
@@ -2577,6 +2714,22 @@ function filtrarPedidos() {
             if (data.success) {
                 console.log('🎉 Pedidos encontrados:', data.pedidos.length);
                 renderizarPedidos(data.pedidos);
+                
+                // Atualizar contadores das abas se disponíveis
+                if (data.contadores) {
+                    document.getElementById('count-todos').textContent = data.contadores.todos;
+                    document.getElementById('count-pendente').textContent = data.contadores.pendente;
+                    document.getElementById('count-confirmado').textContent = data.contadores.confirmado;
+                    document.getElementById('count-preparacao').textContent = data.contadores.preparacao;
+                    document.getElementById('count-enviado').textContent = data.contadores.enviado;
+                    document.getElementById('count-reembolso').textContent = data.contadores.reembolso;
+                    
+                    // Log detalhado dos contadores
+                    console.log('📊 Contadores atualizados:', data.contadores);
+                } else {
+                    // Fallback: contar pedidos manualmente
+                    atualizarContadoresLocal(data.pedidos);
+                }
             } else {
                 console.error('❌ Erro no servidor:', data.message);
                 document.getElementById('pedidos-tbody').innerHTML = `
@@ -2619,11 +2772,41 @@ function renderizarPedidos(pedidos) {
     const tbody = document.getElementById('pedidos-tbody');
     
     if (pedidos.length === 0) {
+        // Mensagem personalizada baseada na aba ativa
+        let mensagem = 'Nenhum pedido encontrado';
+        let icone = 'inbox';
+        
+        switch(abaAtiva) {
+            case 'AGUARDANDO':
+                mensagem = 'Nenhum pedido aguardando';
+                icone = 'schedule';
+                break;
+            case 'CONFIRMADO':
+                mensagem = 'Nenhum pedido confirmado';
+                icone = 'check_circle';
+                break;
+            case 'EM_PREPARACAO':
+                mensagem = 'Nenhum pedido em preparação';
+                icone = 'engineering';
+                break;
+            case 'ENVIADO':
+                mensagem = 'Nenhum pedido enviado';
+                icone = 'local_shipping';
+                break;
+            case 'ESTORNADO':
+                mensagem = 'Nenhum reembolso solicitado';
+                icone = 'currency_exchange';
+                break;
+            default:
+                mensagem = 'Nenhum pedido encontrado';
+                icone = 'inbox';
+        }
+        
         tbody.innerHTML = `
             <tr>
                 <td colspan="7" class="empty-state">
-                    <span class="material-symbols-sharp">inbox</span>
-                    <p>Nenhum pedido encontrado</p>
+                    <span class="material-symbols-sharp">${icone}</span>
+                    <p>${mensagem}</p>
                 </td>
             </tr>
         `;
@@ -2682,6 +2865,7 @@ function atualizarContadores(pedidos) {
         todos: pedidos.length,
         pendente: 0,
         confirmado: 0,
+        preparacao: 0,
         enviado: 0,
         reembolso: 0
     };
@@ -2692,6 +2876,8 @@ function atualizarContadores(pedidos) {
             contadores.pendente++;
         } else if (status.includes('confirmado') || status.includes('pago')) {
             contadores.confirmado++;
+        } else if (status.includes('preparação') || status.includes('prepara')) {
+            contadores.preparacao++;
         } else if (status.includes('enviado') || status.includes('entregue')) {
             contadores.enviado++;
         } else if (status.includes('reembolso')) {
@@ -2703,6 +2889,7 @@ function atualizarContadores(pedidos) {
     document.getElementById('count-todos').textContent = contadores.todos;
     document.getElementById('count-pendente').textContent = contadores.pendente;
     document.getElementById('count-confirmado').textContent = contadores.confirmado;
+    document.getElementById('count-preparacao').textContent = contadores.preparacao;
     document.getElementById('count-enviado').textContent = contadores.enviado;
     document.getElementById('count-reembolso').textContent = contadores.reembolso;
 }
@@ -3426,6 +3613,13 @@ function atualizarLinhaTabela(pedidoId, novoStatus, corStatus) {
         }
     });
 }
+
+// Carregar pedidos ao iniciar a página
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Página carregada, iniciando busca de pedidos...');
+    filtrarPedidos();
+});
+
 </script>
  </body>
 </html>
