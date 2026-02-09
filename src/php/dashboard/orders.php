@@ -2061,6 +2061,41 @@ try {
             color: var(--color-white) !important;
             border: 1px solid #ff00cc !important;
         }
+
+        /* Estilos das abas no modo escuro */
+        body.dark-theme-variables .tab {
+            color: var(--color-dark) !important; /* Texto branco no modo escuro */
+        }
+
+        body.dark-theme-variables .tab-text {
+            color: var(--color-dark) !important; /* Texto das abas branco */
+        }
+
+        body.dark-theme-variables .tab-icon .material-symbols-sharp {
+            color: var(--color-dark) !important; /* Ícones das abas brancos */
+        }
+
+        body.dark-theme-variables .tab:hover {
+            background: rgba(255,0,204,0.1) !important; /* Hover mais visível no escuro */
+            color: var(--color-dark) !important;
+        }
+
+        body.dark-theme-variables .tab:hover .tab-text,
+        body.dark-theme-variables .tab:hover .tab-icon .material-symbols-sharp {
+            color: var(--color-primary) !important; /* Cor pink no hover */
+        }
+
+        body.dark-theme-variables .tab-count {
+            background: rgba(255,255,255,0.1) !important;
+            color: var(--color-dark) !important; /* Texto do contador branco */
+        }
+
+        /* Aba ativa no modo escuro mantém as cores originais */
+        body.dark-theme-variables .tab.active .tab-text,
+        body.dark-theme-variables .tab.active .tab-icon .material-symbols-sharp,
+        body.dark-theme-variables .tab.active .tab-count {
+            color: white !important; /* Mantém branco na aba ativa */
+        }
         
         /* ==================== FIM MODO ESCURO ==================== */
     </style>

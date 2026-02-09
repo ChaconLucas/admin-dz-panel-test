@@ -585,6 +585,21 @@ try {
             border-color: var(--color-primary);
             background: rgba(255, 0, 204, 0.05);
         }
+
+        /* Estados iniciais dos checkboxes - GARANTIR ESTADO PADRÃO */
+        .regra-negocio:not(.active) {
+            border-color: var(--color-light);
+            background: var(--color-white);
+        }
+
+        .regra-negocio:not(.active) .custom-checkbox {
+            background: var(--color-white);
+            border-color: var(--color-light);
+        }
+
+        .regra-negocio:not(.active) .custom-checkbox span {
+            color: transparent;
+        }
         
         /* Responsivo para mobile */
         @media (max-width: 768px) {
@@ -621,6 +636,117 @@ try {
                 transform: translateY(0) scale(1);
             }
         }
+
+        /* ==================== MODO ESCURO - MODAL ==================== */
+        body.dark-theme-variables #statusModal > div {
+            background: var(--color-white) !important;
+        }
+
+        body.dark-theme-variables #statusModal h2,
+        body.dark-theme-variables #statusModal label,
+        body.dark-theme-variables #statusModal p,
+        body.dark-theme-variables #statusModal span:not(.material-symbols-sharp) {
+            color: var(--color-dark) !important;
+        }
+
+        /* Descrições dos checkboxes */
+        body.dark-theme-variables #statusModal .regra-negocio small {
+            color: var(--color-dark-variant) !important;
+        }
+
+        /* Títulos dos checkboxes */
+        body.dark-theme-variables #statusModal .regra-negocio div {
+            color: var(--color-dark) !important;
+        }
+
+        body.dark-theme-variables #statusModal input[type="text"],
+        body.dark-theme-variables #statusModal input[type="color"],
+        body.dark-theme-variables #statusModal input[type="number"],
+        body.dark-theme-variables #statusModal textarea,
+        body.dark-theme-variables #statusModal select {
+            background: #2c2f33 !important;
+            color: var(--color-dark) !important;
+            border-color: rgba(255,255,255,0.2) !important;
+        }
+
+        body.dark-theme-variables #statusModal input::placeholder,
+        body.dark-theme-variables #statusModal textarea::placeholder {
+            color: rgba(237, 239, 253, 0.6) !important;
+        }
+
+        /* Container das regras de negócio no modo escuro */
+        body.dark-theme-variables #statusModal .regras-container {
+            background: rgba(44, 47, 51, 0.3) !important;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+
+        /* Regras de negócio - ESTADO PADRÃO no modo escuro */
+        body.dark-theme-variables #statusModal .regra-negocio:not(.active) {
+            background: #2c2f33 !important;
+            border-color: rgba(255,255,255,0.2) !important;
+        }
+
+        /* Regras de negócio - ESTADO ATIVO no modo escuro */
+        body.dark-theme-variables #statusModal .regra-negocio.active {
+            background: rgba(255, 0, 204, 0.1) !important;
+            border-color: var(--color-primary) !important;
+        }
+
+        /* Checkbox customizado no modo escuro - ESTADO PADRÃO */
+        body.dark-theme-variables #statusModal .regra-negocio:not(.active) .custom-checkbox {
+            background: #404040 !important;
+            border-color: rgba(255,255,255,0.3) !important;
+        }
+
+        /* Checkbox customizado no modo escuro - ESTADO ATIVO */
+        body.dark-theme-variables #statusModal .regra-negocio.active .custom-checkbox {
+            background: var(--color-primary) !important;
+            border-color: var(--color-primary) !important;
+        }
+
+        /* Ícones dos checkboxes no modo escuro */
+        body.dark-theme-variables #statusModal .regra-negocio:not(.active) .custom-checkbox span {
+            color: transparent !important;
+        }
+
+        body.dark-theme-variables #statusModal .regra-negocio.active .custom-checkbox span {
+            color: white !important;
+        }
+
+        /* Header do modal no modo escuro */
+        body.dark-theme-variables #statusModal > div > div:first-child {
+            background: var(--color-white) !important;
+            border-bottom-color: rgba(255,255,255,0.1) !important;
+        }
+
+        /* Botões no modo escuro */
+        body.dark-theme-variables #statusModal button[type="button"]:not([onclick*="closeModal"]) {
+            background: var(--color-primary) !important;
+            color: white !important;
+        }
+
+        body.dark-theme-variables #statusModal button[onclick*="closeModal"] {
+            background: rgba(255,255,255,0.1) !important;
+            color: var(--color-dark) !important;
+        }
+
+        /* Templates e outras seções no modo escuro */
+        body.dark-theme-variables #statusModal .mensagem-template-container {
+            background: rgba(44, 47, 51, 0.2) !important;
+            border-color: rgba(255,0,204,0.3) !important;
+        }
+
+        body.dark-theme-variables #statusModal .mensagem-template-container h3 {
+            color: var(--color-primary) !important;
+        }
+
+        /* Botões de variáveis */
+        body.dark-theme-variables #statusModal button[onclick*="inserirVariavel"] {
+            background: rgba(255, 0, 204, 0.2) !important;
+            border-color: var(--color-primary) !important;
+            color: var(--color-primary) !important;
+        }
+        /* ==================== FIM MODO ESCURO - MODAL ==================== */
     </style>
 
     <!-- Modal para Adicionar/Editar Status -->
@@ -818,6 +944,30 @@ try {
     <!-- Scripts -->
     <script src="../../js/dashboard.js"></script>
     <script>
+        // Funções globais - devem estar disponíveis para os botões HTML
+        function openAddModal() {
+            console.log('➕ Abrindo modal para adicionar');
+            resetModalForm();
+            document.getElementById('modalTitle').textContent = 'Adicionar Novo Status';
+            document.getElementById('formAction').value = 'add_status';
+            document.getElementById('statusId').value = '';
+            document.getElementById('submitText').textContent = 'Adicionar Status';
+            document.getElementById('statusModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            console.log('❌ Fechando modal');
+            document.getElementById('statusModal').style.display = 'none';
+        }
+
+        function deleteStatus(id, nome) {
+            console.log(`🗑️ Deletar status: ${id} - ${nome}`);
+            if (confirm(`Tem certeza que deseja excluir o status "${nome}"?\n\nEsta ação é irreversível e pode afetar pedidos existentes.`)) {
+                document.getElementById('deleteForm').querySelector('[name="id"]').value = id;
+                document.getElementById('deleteForm').submit();
+            }
+        }
+
         // Aplicar tema salvo e configurar event listeners
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM carregado, inicializando Gestão de Fluxo...');
@@ -891,7 +1041,10 @@ try {
             console.log(`🔍 Elementos encontrados - customCheckbox:`, customCheckbox, `checkIcon:`, checkIcon);
             
             if (isChecked) {
-                // Estado marcado - rosa
+                // Adicionar classe active para uso no CSS
+                regraElement.classList.add('active');
+                
+                // Estado marcado - usar estilos inline para garantir prioridade
                 regraElement.style.borderColor = 'var(--color-primary)';
                 regraElement.style.backgroundColor = 'rgba(255, 0, 212, 0.05)';
                 customCheckbox.style.backgroundColor = 'var(--color-primary)';
@@ -900,6 +1053,9 @@ try {
                 checkIcon.style.fontWeight = 'bold';
                 console.log(`✅ Visual ativado (rosa) para ${regraElement.dataset.checkbox}`);
             } else {
+                // Remover classe active
+                regraElement.classList.remove('active');
+                
                 // Estado desmarcado - padrão
                 regraElement.style.borderColor = 'var(--color-info-light)';
                 regraElement.style.backgroundColor = 'var(--color-white)';
@@ -911,17 +1067,7 @@ try {
             }
         }
 
-        // Funções do Modal
-        function openAddModal() {
-            console.log('➕ Abrindo modal para adicionar');
-            resetModalForm();
-            document.getElementById('modalTitle').textContent = 'Adicionar Novo Status';
-            document.getElementById('formAction').value = 'add_status';
-            document.getElementById('statusId').value = '';
-            document.getElementById('submitText').textContent = 'Adicionar Status';
-            document.getElementById('statusModal').style.display = 'flex';
-        }
-
+        // Função para editar status
         function editStatus(button) {
             console.log('🔧 editStatus iniciado', button);
             
@@ -935,7 +1081,7 @@ try {
                     const statusData = {
                         id: button.getAttribute('data-id'),
                         nome: button.getAttribute('data-nome'),
-                        cor: button.getAttribute('data-cor') || '#ff007f', // Validação de cor padrão
+                        cor: button.getAttribute('data-cor') || '#ff007f',
                         baixaEstoque: button.getAttribute('data-baixa-estoque') === '1',
                         bloquearEdicao: button.getAttribute('data-bloquear-edicao') === '1',
                         gerarLogistica: button.getAttribute('data-gerar-logistica') === '1',
@@ -955,7 +1101,7 @@ try {
                     document.getElementById('statusId').value = statusData.id;
                     document.getElementById('submitText').textContent = 'Atualizar Status';
                     
-                    // Preencher campos básicos com validação de cor
+                    // Preencher campos básicos
                     document.getElementById('statusNome').value = statusData.nome;
                     const corInput = document.getElementById('statusCor');
                     const corValida = statusData.cor && statusData.cor.match(/^#[0-9A-Fa-f]{6}$/) ? statusData.cor : '#ff007f';
@@ -966,7 +1112,7 @@ try {
                     setTimeout(() => {
                         console.log('🔄 Aplicando configurações dos checkboxes...');
                         
-                        // Configurar checkboxes com verificação robusta - sincronia de toggles garantida
+                        // Configurar checkboxes
                         setCheckboxValue('baixaEstoque', statusData.baixaEstoque);
                         setCheckboxValue('bloquearEdicao', statusData.bloquearEdicao);
                         setCheckboxValue('gerarLogistica', statusData.gerarLogistica);
@@ -1008,26 +1154,22 @@ try {
             }
         }
 
-        // Função auxiliar para configurar checkboxes de forma robusta
+        // Função auxiliar para configurar checkboxes
         function setCheckboxValue(checkboxId, value) {
             const checkbox = document.getElementById(checkboxId);
             if (checkbox) {
-                // Forçar o valor antes de marcar
                 checkbox.checked = false;
                 
-                // Aguardar um pouco e definir o valor correto
                 setTimeout(() => {
                     checkbox.checked = value;
                     console.log(`✓ ${checkboxId}: ${value} (${checkbox.checked})`);
                     
-                    // Encontrar o elemento de regra correspondente
                     const regraElement = document.querySelector(`[data-checkbox="${checkboxId}"]`);
                     if (regraElement) {
                         updateCustomCheckboxVisual(regraElement, value);
                         console.log(`🎨 Visual atualizado para ${checkboxId}: ${value}`);
                     }
                     
-                    // Disparar evento para garantir que outras funcionalidades sejam ativadas
                     const changeEvent = new Event('change', { bubbles: true });
                     checkbox.dispatchEvent(changeEvent);
                     
@@ -1047,16 +1189,14 @@ try {
             document.getElementById('statusCor').value = '#ff00d4';
             document.getElementById('statusId').value = '';
             
-            // Desmarcar todos os checkboxes com força
+            // Desmarcar todos os checkboxes
             const checkboxes = ['baixaEstoque', 'bloquearEdicao', 'gerarLogistica', 'notificar', 'estornarEstoque', 'gerarLinkCobranca'];
             checkboxes.forEach(id => {
                 const checkbox = document.getElementById(id);
                 if (checkbox) {
-                    // Forçar desmarcação
                     checkbox.checked = false;
                     checkbox.removeAttribute('checked');
                     
-                    // Resetar visual do checkbox customizado
                     const regraElement = document.querySelector(`[data-checkbox="${id}"]`);
                     if (regraElement) {
                         updateCustomCheckboxVisual(regraElement, false);
@@ -1066,7 +1206,7 @@ try {
                 }
             });
             
-            // Limpar template, email e SLA com verificações de segurança
+            // Limpar template, email e SLA
             const templateField = document.getElementById('mensagemTemplate');
             if (templateField) {
                 templateField.value = '';
@@ -1094,44 +1234,17 @@ try {
             console.log('✨ Reset do modal concluído');
         }
 
-        function deleteStatus(id, nome) {
-            if (confirm(`Tem certeza que deseja excluir o status "${nome}"?\n\nEsta ação não pode ser desfeita.`)) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.style.display = 'none';
-                
-                const actionInput = document.createElement('input');
-                actionInput.name = 'action';
-                actionInput.value = 'delete_status';
-                
-                const idInput = document.createElement('input');
-                idInput.name = 'id';
-                idInput.value = id;
-                
-                form.appendChild(actionInput);
-                form.appendChild(idInput);
-                document.body.appendChild(form);
-                form.submit();
+        // Toggle do template de mensagem
+        function toggleMensagemTemplate() {
+            const checkbox = document.getElementById('notificar');
+            const div = document.getElementById('mensagemTemplateDiv');
+            
+            if (checkbox && div) {
+                const shouldShow = checkbox.checked;
+                div.style.display = shouldShow ? 'block' : 'none';
+                console.log(`📧 Template de mensagem: ${shouldShow ? 'visível' : 'oculto'}`);
             }
         }
-
-        function closeModal() {
-            console.log('🚪 Fechando modal');
-            resetModalForm();
-            document.getElementById('statusModal').style.display = 'none';
-        }
-
-        // Fechar modal clicando no fundo
-        document.addEventListener('DOMContentLoaded', function() {
-            const modal = document.getElementById('statusModal');
-            if (modal) {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        closeModal();
-                    }
-                });
-            }
-        });
 
         // Atualizar preview da cor em tempo real
         document.addEventListener('DOMContentLoaded', function() {
@@ -1158,22 +1271,9 @@ try {
         function updateColorPreview(cor, nome) {
             const preview = document.getElementById('corPreview');
             if (preview) {
-                // Validação de cor para evitar erros de formato hexadecimal
                 const corValida = cor && cor.match(/^#[0-9A-Fa-f]{6}$/) ? cor : '#ff007f';
                 preview.style.background = corValida;
                 preview.textContent = nome || 'Preview';
-            }
-        }
-
-        // Toggle do template de mensagem com melhor controle
-        function toggleMensagemTemplate() {
-            const checkbox = document.getElementById('notificar');
-            const div = document.getElementById('mensagemTemplateDiv');
-            
-            if (checkbox && div) {
-                const shouldShow = checkbox.checked;
-                div.style.display = shouldShow ? 'block' : 'none';
-                console.log(`📧 Template de mensagem: ${shouldShow ? 'visível' : 'oculto'}`);
             }
         }
 
@@ -1221,63 +1321,25 @@ try {
             }
         }
 
+        // Fechar modal clicando no fundo
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('statusModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeModal();
+                    }
+                });
+            }
+        });
+
         // Event listener para o checkbox de notificação
         document.addEventListener('DOMContentLoaded', function() {
             const notificarCheckbox = document.getElementById('notificar');
             if (notificarCheckbox) {
                 notificarCheckbox.addEventListener('change', toggleMensagemTemplate);
             }
-            
-            // Adicionar event listeners para todas as regras de negócio
-            initRegrasNegocio();
         });
-        
-        // Função para inicializar regras de negócio
-        function initRegrasNegocio() {
-            const regras = document.querySelectorAll('.regra-negocio');
-            
-            regras.forEach(regra => {
-                // Adicionar event listener para clique na regra
-                regra.addEventListener('click', function() {
-                    const checkboxId = this.getAttribute('data-checkbox');
-                    if (checkboxId) {
-                        toggleCheckbox(checkboxId, this);
-                    }
-                });
-                
-                // Verificar estado inicial
-                const checkboxId = regra.getAttribute('data-checkbox');
-                if (checkboxId) {
-                    const checkbox = document.getElementById(checkboxId);
-                    if (checkbox && checkbox.checked) {
-                        regra.classList.add('active');
-                    }
-                }
-            });
-        }
-        
-        // Função para toggle de checkbox
-        function toggleCheckbox(checkboxId, regraElement) {
-            const checkbox = document.getElementById(checkboxId);
-            if (checkbox) {
-                checkbox.checked = !checkbox.checked;
-                updateCustomCheckboxVisual(regraElement, checkbox.checked);
-                
-                // Se for notificação, toggle do template
-                if (checkboxId === 'notificar') {
-                    toggleMensagemTemplate();
-                }
-            }
-        }
-        
-        // Função para atualizar visual do checkbox customizado
-        function updateCustomCheckboxVisual(regraElement, checked) {
-            if (checked) {
-                regraElement.classList.add('active');
-            } else {
-                regraElement.classList.remove('active');
-            }
-        }
     </script>
 </body>
 </html>
