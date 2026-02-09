@@ -537,115 +537,193 @@ try {
         </div>
     </div>
 
+    <style>
+        /* Estilo para área de regras de negócio */
+        .regras-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .regras-container::-webkit-scrollbar-track {
+            background: rgba(255, 0, 204, 0.1);
+            border-radius: 3px;
+        }
+        
+        .regras-container::-webkit-scrollbar-thumb {
+            background: var(--color-primary);
+            border-radius: 3px;
+        }
+        
+        .regras-container::-webkit-scrollbar-thumb:hover {
+            background: #e0009a;
+        }
+        
+        /* Animação para checkboxes */
+        .regra-negocio.active .custom-checkbox {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        
+        .regra-negocio.active .custom-checkbox span {
+            color: white !important;
+        }
+        
+        .regra-negocio.active {
+            border-color: var(--color-primary);
+            background: rgba(255, 0, 204, 0.05);
+        }
+        
+        /* Responsivo para mobile */
+        @media (max-width: 768px) {
+            #statusModal > div {
+                width: 95% !important;
+                margin: 1rem !important;
+                max-height: calc(100vh - 2rem) !important;
+            }
+            
+            #statusModal > div > div:last-child {
+                padding: 1rem !important;
+                max-height: calc(100vh - 6rem) !important;
+            }
+            
+            .regras-container {
+                max-height: 300px !important;
+            }
+        }
+        
+        /* Efeito hover para todo o modal */
+        #statusModal > div {
+            animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+
     <!-- Modal para Adicionar/Editar Status -->
-    <div id="statusModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: var(--color-white); border-radius: var(--card-border-radius); padding: 2rem; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 id="modalTitle" style="color: var(--color-dark); margin: 0;">Adicionar Novo Status</h2>
-                <button onclick="closeModal()" style="background: none; border: none; cursor: pointer; color: var(--color-dark); font-size: 1.5rem;">
-                    <span class="material-symbols-sharp">close</span>
-                </button>
+    <div id="statusModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: flex-start; padding: 2rem 1rem; box-sizing: border-box; overflow-y: auto;">
+        <div style="background: var(--color-white); border-radius: var(--card-border-radius); padding: 0; width: 100%; max-width: 650px; min-height: fit-content; max-height: calc(100vh - 4rem); position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+            <!-- Header Fixo -->
+            <div style="padding: 2rem 2rem 1rem 2rem; border-bottom: 1px solid var(--color-light); position: sticky; top: 0; background: var(--color-white); z-index: 10; border-radius: var(--card-border-radius) var(--card-border-radius) 0 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 id="modalTitle" style="color: var(--color-dark); margin: 0; font-size: 1.5rem;">Adicionar Novo Status</h2>
+                    <button onclick="closeModal()" style="background: var(--color-light); border: none; cursor: pointer; color: var(--color-dark); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;" onmouseover="this.style.background='var(--color-danger)'; this.style.color='white';" onmouseout="this.style.background='var(--color-light)'; this.style.color='var(--color-dark)';">
+                        <span class="material-symbols-sharp" style="font-size: 20px;">close</span>
+                    </button>
+                </div>
             </div>
+            
+            <!-- Conteúdo Scrollável -->
+            <div style="padding: 1.5rem 2rem 2rem 2rem; overflow-y: auto; max-height: calc(100vh - 8rem);">
+                <form id="statusForm" method="POST">
+                    <input type="hidden" name="action" value="add_status" id="formAction">
+                    <input type="hidden" name="id" value="" id="statusId">
 
-            <form id="statusForm" method="POST">
-                <input type="hidden" name="action" value="add_status" id="formAction">
-                <input type="hidden" name="id" value="" id="statusId">
-
-                <!-- Nome do Status -->
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Nome do Status *</label>
-                    <input type="text" name="nome" id="statusNome" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-info-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 1rem;" placeholder="Ex: Pago, Enviado, Entregue...">
-                </div>
-
-                <!-- Cor do Status -->
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Cor do Status</label>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <input type="color" name="cor_hex" id="statusCor" value="#ff00d4" style="width: 60px; height: 40px; border: none; border-radius: var(--border-radius-1); cursor: pointer;">
-                        <span id="corPreview" style="padding: 0.5rem 1rem; background: #ff00d4; color: white; border-radius: var(--border-radius-2); font-size: 0.85rem; font-weight: 600;">Preview</span>
+                    <!-- Nome do Status -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Nome do Status *</label>
+                        <input type="text" name="nome" id="statusNome" required style="width: 100%; padding: 0.75rem; border: 2px solid var(--color-light); border-radius: var(--border-radius-1); background: var(--color-white); font-size: 1rem; transition: all 0.3s ease;" placeholder="Ex: Pago, Enviado, Entregue..." onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-light)'">
                     </div>
-                </div>
 
-                <!-- Regras de Negócio -->
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.75rem;">Regras de Negócio</label>
-                    <div style="display: grid; gap: 0.75rem;">
-                        <!-- Baixar Estoque -->
-                        <div class="regra-negocio" data-checkbox="baixaEstoque" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
-                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
-                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Baixar Estoque automaticamente</div>
-                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Subtrai automaticamente do inventário quando o pedido atingir este status</small>
-                            </div>
-                            <input type="checkbox" name="baixa_estoque" id="baixaEstoque" style="display: none;">
+                    <!-- Cor do Status -->
+                    <div style="margin-bottom: 2rem;">
+                        <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 0.5rem;">Cor do Status</label>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <input type="color" name="cor_hex" id="statusCor" value="#ff00d4" style="width: 60px; height: 40px; border: none; border-radius: var(--border-radius-1); cursor: pointer; border: 2px solid var(--color-light);">
+                            <span id="corPreview" style="padding: 0.5rem 1rem; background: #ff00d4; color: white; border-radius: var(--border-radius-2); font-size: 0.85rem; font-weight: 600; transition: all 0.3s ease;">Preview</span>
                         </div>
+                    </div>
 
-                        <!-- Bloquear Edição -->
-                        <div class="regra-negocio" data-checkbox="bloquearEdicao" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
-                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
-                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Bloquear edição do pedido</div>
-                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Impede qualquer modificação no pedido após atingir este status</small>
-                            </div>
-                            <input type="checkbox" name="bloquear_edicao" id="bloquearEdicao" style="display: none;">
-                        </div>
-
-                        <!-- Gerar Logística -->
-                        <div class="regra-negocio" data-checkbox="gerarLogistica" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
-                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
-                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Gerar logística (Melhor Envio)</div>
-                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Habilita botões de rastreio e integração com transportadoras</small>
-                            </div>
-                            <input type="checkbox" name="gerar_logistica" id="gerarLogistica" style="display: none;">
-                        </div>
-
-                        <!-- Ativar Notificação -->
-                        <div class="regra-negocio" data-checkbox="notificar" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
-                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
-                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Ativar notificação automática</div>
-                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Envia mensagem automaticamente via WhatsApp/E-mail</small>
-                            </div>
-                            <input type="checkbox" name="notificar" id="notificar" style="display: none;">
-                        </div>
-
-                        <!-- Estornar Estoque -->
-                        <div class="regra-negocio" data-checkbox="estornarEstoque" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
-                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
-                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">check</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">Estornar Estoque</div>
-                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Se ativado, produtos deste status voltam ao inventário (ex: Devoluções)</small>
-                            </div>
-                            <input type="checkbox" name="estornar_estoque" id="estornarEstoque" style="display: none;">
-                        </div>
-
-                        <!-- Gerar Link de Cobrança -->
-                        <div class="regra-negocio" data-checkbox="gerarLinkCobranca" style="display: flex; align-items: center; gap: 1rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-2); border: 2px solid var(--color-info-light); transition: all 0.3s ease; background: var(--color-white);">
-                            <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 2px solid var(--color-info-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white);">
-                                <span class="material-symbols-sharp" style="font-size: 18px; color: transparent; transition: all 0.3s ease;">credit_card</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem;">
-                                    <span class="material-symbols-sharp" style="font-size: 16px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-success);">credit_card</span>
-                                    Gerar Link de Cobrança
+                    <!-- Regras de Negócio -->
+                    <div style="margin-bottom: 2rem;">
+                        <label style="display: block; font-weight: 600; color: var(--color-dark); margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 2px solid var(--color-primary); padding-bottom: 0.5rem;">
+                            <span class="material-symbols-sharp" style="font-size: 18px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-primary);">settings</span>
+                            Regras de Negócio
+                        </label>
+                        <div class="regras-container" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 400px; overflow-y: auto; padding: 1rem; background: rgba(255, 0, 204, 0.02); border-radius: var(--border-radius-2); border: 1px solid rgba(255, 0, 204, 0.1);">
+                            <!-- Baixar Estoque -->
+                            <div class="regra-negocio" data-checkbox="baixaEstoque" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-1); border: 2px solid var(--color-light); transition: all 0.3s ease; background: var(--color-white); position: relative; min-height: 60px;" onmouseover="this.style.borderColor='var(--color-primary)'; this.style.boxShadow='0 2px 10px rgba(255, 0, 204, 0.1)';" onmouseout="this.style.borderColor='var(--color-light)'; this.style.boxShadow='none';">
+                                <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white); flex-shrink: 0; margin-top: 2px;">
+                                    <span class="material-symbols-sharp" style="font-size: 16px; color: transparent; transition: all 0.3s ease;">check</span>
                                 </div>
-                                <small style="color: var(--color-info-dark); font-size: 0.8rem;">Se ativado, habilita o shortcode {link_pagamento} no template</small>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem; margin-bottom: 0.25rem;">Baixar Estoque automaticamente</div>
+                                    <small style="color: var(--color-info-dark); font-size: 0.8rem; line-height: 1.3;">Subtrai automaticamente do inventário quando o pedido atingir este status</small>
+                                </div>
+                                <input type="checkbox" name="baixa_estoque" id="baixaEstoque" style="display: none;">
                             </div>
-                            <input type="checkbox" name="gerar_link_cobranca" id="gerarLinkCobranca" style="display: none;">
+
+                            <!-- Bloquear Edição -->
+                            <div class="regra-negocio" data-checkbox="bloquearEdicao" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-1); border: 2px solid var(--color-light); transition: all 0.3s ease; background: var(--color-white); position: relative; min-height: 60px;" onmouseover="this.style.borderColor='var(--color-primary)'; this.style.boxShadow='0 2px 10px rgba(255, 0, 204, 0.1)';" onmouseout="this.style.borderColor='var(--color-light)'; this.style.boxShadow='none';">
+                                <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white); flex-shrink: 0; margin-top: 2px;">
+                                    <span class="material-symbols-sharp" style="font-size: 16px; color: transparent; transition: all 0.3s ease;">check</span>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem; margin-bottom: 0.25rem;">Bloquear edição do pedido</div>
+                                    <small style="color: var(--color-info-dark); font-size: 0.8rem; line-height: 1.3;">Impede qualquer modificação no pedido após atingir este status</small>
+                                </div>
+                                <input type="checkbox" name="bloquear_edicao" id="bloquearEdicao" style="display: none;">
+                            </div>
+
+                            <!-- Gerar Logística -->
+                            <div class="regra-negocio" data-checkbox="gerarLogistica" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-1); border: 2px solid var(--color-light); transition: all 0.3s ease; background: var(--color-white); position: relative; min-height: 60px;" onmouseover="this.style.borderColor='var(--color-primary)'; this.style.boxShadow='0 2px 10px rgba(255, 0, 204, 0.1)';" onmouseout="this.style.borderColor='var(--color-light)'; this.style.boxShadow='none';">
+                                <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white); flex-shrink: 0; margin-top: 2px;">
+                                    <span class="material-symbols-sharp" style="font-size: 16px; color: transparent; transition: all 0.3s ease;">check</span>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem; margin-bottom: 0.25rem;">Gerar logística (Melhor Envio)</div>
+                                    <small style="color: var(--color-info-dark); font-size: 0.8rem; line-height: 1.3;">Habilita botões de rastreio e integração com transportadoras</small>
+                                </div>
+                                <input type="checkbox" name="gerar_logistica" id="gerarLogistica" style="display: none;">
+                            </div>
+
+                            <!-- Ativar Notificação -->
+                            <div class="regra-negocio" data-checkbox="notificar" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-1); border: 2px solid var(--color-light); transition: all 0.3s ease; background: var(--color-white); position: relative; min-height: 60px;" onmouseover="this.style.borderColor='var(--color-primary)'; this.style.boxShadow='0 2px 10px rgba(255, 0, 204, 0.1)';" onmouseout="this.style.borderColor='var(--color-light)'; this.style.boxShadow='none';">
+                                <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white); flex-shrink: 0; margin-top: 2px;">
+                                    <span class="material-symbols-sharp" style="font-size: 16px; color: transparent; transition: all 0.3s ease;">check</span>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem; margin-bottom: 0.25rem;">Ativar notificação automática</div>
+                                    <small style="color: var(--color-info-dark); font-size: 0.8rem; line-height: 1.3;">Envia mensagem automaticamente via WhatsApp/E-mail</small>
+                                </div>
+                                <input type="checkbox" name="notificar" id="notificar" style="display: none;">
+                            </div>
+
+                            <!-- Estornar Estoque -->
+                            <div class="regra-negocio" data-checkbox="estornarEstoque" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-1); border: 2px solid var(--color-light); transition: all 0.3s ease; background: var(--color-white); position: relative; min-height: 60px;" onmouseover="this.style.borderColor='var(--color-primary)'; this.style.boxShadow='0 2px 10px rgba(255, 0, 204, 0.1)';" onmouseout="this.style.borderColor='var(--color-light)'; this.style.boxShadow='none';">
+                                <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white); flex-shrink: 0; margin-top: 2px;">
+                                    <span class="material-symbols-sharp" style="font-size: 16px; color: transparent; transition: all 0.3s ease;">check</span>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem; margin-bottom: 0.25rem;">Estornar Estoque</div>
+                                    <small style="color: var(--color-info-dark); font-size: 0.8rem; line-height: 1.3;">Se ativado, produtos deste status voltam ao inventário (ex: Devoluções)</small>
+                                </div>
+                                <input type="checkbox" name="estornar_estoque" id="estornarEstoque" style="display: none;">
+                            </div>
+
+                            <!-- Gerar Link de Cobrança -->
+                            <div class="regra-negocio" data-checkbox="gerarLinkCobranca" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 1rem; border-radius: var(--border-radius-1); border: 2px solid var(--color-light); transition: all 0.3s ease; background: var(--color-white); position: relative; min-height: 60px;" onmouseover="this.style.borderColor='var(--color-primary)'; this.style.boxShadow='0 2px 10px rgba(255, 0, 204, 0.1)';" onmouseout="this.style.borderColor='var(--color-light)'; this.style.boxShadow='none';">
+                                <div class="custom-checkbox" style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-light); border-radius: 4px; transition: all 0.3s ease; background: var(--color-white); flex-shrink: 0; margin-top: 2px;">
+                                    <span class="material-symbols-sharp" style="font-size: 16px; color: transparent; transition: all 0.3s ease;">credit_card</span>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; color: var(--color-dark); font-size: 0.95rem; margin-bottom: 0.25rem;">
+                                        <span class="material-symbols-sharp" style="font-size: 16px; vertical-align: middle; margin-right: 0.5rem; color: var(--color-success);">credit_card</span>
+                                        Gerar Link de Cobrança
+                                    </div>
+                                    <small style="color: var(--color-info-dark); font-size: 0.8rem; line-height: 1.3;">Se ativado, habilita o shortcode {link_pagamento} no template</small>
+                                </div>
+                                <input type="checkbox" name="gerar_link_cobranca" id="gerarLinkCobranca" style="display: none;">
+                            </div>
                         </div>
                     </div>
-                </div>
 
                 <!-- Prazo de SLA -->
                 <div style="margin-bottom: 1.5rem;">
@@ -705,16 +783,19 @@ try {
                     </div>
                 </div>
 
-                <!-- Botões -->
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-                    <button type="button" onclick="closeModal()" style="background: var(--color-light); color: var(--color-dark); border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; font-weight: 600;">
-                        Cancelar
-                    </button>
-                    <button type="submit" style="background: var(--color-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; font-weight: 600;">
-                        <span id="submitText">Adicionar Status</span>
-                    </button>
-                </div>
-            </form>
+                    <!-- Botões -->
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid var(--color-light);">
+                        <button type="button" onclick="closeModal()" style="background: var(--color-light); color: var(--color-dark); border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='var(--color-danger)'; this.style.color='white';" onmouseout="this.style.background='var(--color-light)'; this.style.color='var(--color-dark)';">
+                            <span class="material-symbols-sharp" style="font-size: 18px;">cancel</span>
+                            Cancelar
+                        </button>
+                        <button type="submit" style="background: var(--color-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-2); cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
+                            <span class="material-symbols-sharp" style="font-size: 18px;">check</span>
+                            <span id="submitText">Adicionar Status</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -1130,7 +1211,57 @@ try {
             if (notificarCheckbox) {
                 notificarCheckbox.addEventListener('change', toggleMensagemTemplate);
             }
+            
+            // Adicionar event listeners para todas as regras de negócio
+            initRegrasNegocio();
         });
+        
+        // Função para inicializar regras de negócio
+        function initRegrasNegocio() {
+            const regras = document.querySelectorAll('.regra-negocio');
+            
+            regras.forEach(regra => {
+                // Adicionar event listener para clique na regra
+                regra.addEventListener('click', function() {
+                    const checkboxId = this.getAttribute('data-checkbox');
+                    if (checkboxId) {
+                        toggleCheckbox(checkboxId, this);
+                    }
+                });
+                
+                // Verificar estado inicial
+                const checkboxId = regra.getAttribute('data-checkbox');
+                if (checkboxId) {
+                    const checkbox = document.getElementById(checkboxId);
+                    if (checkbox && checkbox.checked) {
+                        regra.classList.add('active');
+                    }
+                }
+            });
+        }
+        
+        // Função para toggle de checkbox
+        function toggleCheckbox(checkboxId, regraElement) {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                updateCustomCheckboxVisual(regraElement, checkbox.checked);
+                
+                // Se for notificação, toggle do template
+                if (checkboxId === 'notificar') {
+                    toggleMensagemTemplate();
+                }
+            }
+        }
+        
+        // Função para atualizar visual do checkbox customizado
+        function updateCustomCheckboxVisual(regraElement, checked) {
+            if (checked) {
+                regraElement.classList.add('active');
+            } else {
+                regraElement.classList.remove('active');
+            }
+        }
     </script>
 </body>
 </html>
