@@ -71,7 +71,9 @@ if (!$kpis) {
         'total_vendas' => 0,
         'faturamento' => 0,
         'ticket_medio' => 0,
-        'itens_vendidos' => 0
+        'itens_vendidos' => 0,
+        'total_desconto_frete' => 0,
+        'total_desconto_cupom' => 0
     ];
 }
 
@@ -204,47 +206,50 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-      .analytics-header {
-        background: var(--color-white);
-        border-radius: 12px;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 2rem;
-        box-shadow: var(--box-shadow);
-        border: 1px solid var(--color-info-light);
-      }
-      
-      .header-title {
+      .top-controls {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
+        align-items: flex-start;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
       }
       
-      .header-title h1 {
-        margin: 0;
-        color: var(--color-dark);
-        font-size: 1.5rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+      .filters-card {
+        background: var(--color-white);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        box-shadow: var(--box-shadow);
+        border: 1px solid var(--color-info-light);
+        flex: 1;
+        min-width: 100%;
+        width: 100%;
       }
+      
+      main h1 {
+        margin: 0 0 1.5rem 0;
+        color: var(--color-dark);
+        font-size: 1.8rem;
+      }
+      
+
       
       
       .export-btn {
         background: #ff00cc;
         color: white;
         border: none;
-        padding: 0.5rem 1rem;
+        padding: 0.625rem 1.125rem;
         border-radius: 8px;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.375rem;
+        gap: 0.5rem;
         transition: all 0.2s ease;
         font-weight: 500;
         font-size: 0.875rem;
         box-shadow: 0 2px 8px rgba(255, 0, 204, 0.25);
+        white-space: nowrap;
       }
       
       .export-btn:hover {
@@ -265,7 +270,8 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       
       .export-buttons {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        align-items: center;
       }
       
       /* Modal de Sucesso Elegante */
@@ -451,11 +457,26 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         }
       }
       
-      .filters-container {
+      .filters-card {
         display: flex;
-        gap: 1rem;
+        justify-content: space-between;
         align-items: center;
+        gap: 1.5rem;
         flex-wrap: wrap;
+      }
+      
+      .filters-card .date-form {
+        flex: 0 0 auto;
+      }
+      
+      .filters-card .quick-filters {
+        flex: 1;
+        justify-content: center;
+        max-width: 600px;
+      }
+      
+      .filters-card .export-buttons {
+        flex: 0 0 auto;
       }
       
       .date-form {
@@ -463,10 +484,11 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         align-items: center;
         gap: 0.75rem;
         background: var(--color-background);
-        padding: 0.5rem 0.75rem;
+        padding: 0.625rem 0.875rem;
         border-radius: 8px;
         border: 1px solid var(--color-light);
         transition: all 0.2s ease;
+        width: fit-content;
       }
       
       .date-form:focus-within {
@@ -509,11 +531,12 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       
       .quick-filters {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.375rem;
         background: var(--color-background);
         padding: 0.375rem;
         border-radius: 8px;
         border: 1px solid var(--color-light);
+        flex-wrap: wrap;
       }
       
       .quick-filter-btn {
@@ -543,30 +566,39 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       
       /* Responsivo */
       @media (max-width: 768px) {
-        .analytics-header {
+        .top-controls {
+          flex-direction: column;
+          gap: 1rem;
+        }
+        
+        .filters-card {
+          max-width: 100%;
+          min-width: unset;
           padding: 1rem;
+          gap: 1rem;
+          flex-direction: column;
         }
         
-        .header-title {
-          flex-direction: column;
-          gap: 0.75rem;
-          align-items: flex-start;
+        .filters-card .date-form,
+        .filters-card .quick-filters,
+        .filters-card .export-buttons {
+          width: 100%;
         }
         
-        .filters-container {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 0.75rem;
+        .export-buttons {
+          justify-content: center;
         }
         
         .date-form {
           flex-wrap: wrap;
           justify-content: center;
+          width: 100%;
         }
         
         .quick-filters {
           justify-content: center;
           flex-wrap: wrap;
+          width: 100%;
         }
       }
       
@@ -1016,11 +1048,104 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         }
       }
 
-      /* Regras específicas para o modo escuro */
-      body.dark-theme-variables .header-title h1 {
+      /* Estilos do Modal para Modo Escuro */
+      body.dark-theme-variables .modal-overlay {
+        background: rgba(0, 0, 0, 0.8) !important;
+      }
+      
+      body.dark-theme-variables .modal-content {
+        background: var(--color-background) !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+      }
+      
+      body.dark-theme-variables .modal-header {
+        background: linear-gradient(135deg, #ff6b9d, #c44569) !important;
+        color: white !important;
+      }
+      
+      body.dark-theme-variables .modal-body {
+        background: var(--color-background) !important;
         color: var(--color-dark) !important;
       }
       
+      body.dark-theme-variables .file-info {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .file-details p {
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .file-details strong {
+        color: var(--color-white) !important;
+      }
+      
+      body.dark-theme-variables .status-success {
+        color: var(--color-success) !important;
+      }
+      
+      body.dark-theme-variables .features-list h3 {
+        color: var(--color-white) !important;
+      }
+      
+      body.dark-theme-variables .feature-item {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: var(--color-dark) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+      
+      body.dark-theme-variables .download-status p {
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .progress-bar {
+        background: rgba(255, 255, 255, 0.1) !important;
+      }
+      
+      body.dark-theme-variables .progress-fill {
+        background: linear-gradient(45deg, #ff6b9d, #c44569) !important;
+      }
+      
+      body.dark-theme-variables .download-status {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+      
+      body.dark-theme-variables .modal-footer {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+      
+      body.dark-theme-variables .btn-elegant {
+        background: linear-gradient(135deg, #ff6b9d, #c44569) !important;
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4) !important;
+      }
+      
+      body.dark-theme-variables .btn-elegant:hover {
+        box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5) !important;
+      }
+      
+      body.dark-theme-variables .close-btn {
+        color: white !important;
+      }
+      
+      body.dark-theme-variables .close-btn:hover {
+        background: rgba(255, 255, 255, 0.2) !important;
+      }
+
+      /* Regras específicas para o modo escuro */
+      body.dark-theme-variables main h1 {
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .filters-card {
+        background: var(--color-background) !important;
+        border-color: var(--color-dark) !important;
+      }
+
       body.dark-theme-variables .date-form {
         background: var(--color-background) !important;
         border-color: var(--color-dark) !important;
@@ -1083,7 +1208,7 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       body.dark-theme-variables .kpi-details {
         color: var(--color-info-light) !important;
       }
-      
+
       /* Responsividade melhorada para os cards */
       @media (max-width: 768px) {
         .kpis-grid {
@@ -1103,6 +1228,27 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         
         .kpi-value {
           font-size: 1.875rem;
+        }
+        
+        .charts-grid {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+        
+        .modal-content {
+          width: 95%;
+          max-width: 95%;
+          margin: 10% auto;
+          min-width: unset;
+        }
+        
+        .modal-header h2 {
+          font-size: 1.2rem;
+        }
+        
+        .btn-elegant {
+          width: 100%;
+          margin: 0.5rem 0;
         }
       }
     </style>
@@ -1216,23 +1362,12 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       </aside>
 
       <main>
-        <!-- Cabeçalho com Filtros e Exportação -->
-        <div class="analytics-header">
-          <div class="header-title">
-            <h1>Gráficos</h1>
-            <div class="export-buttons">
-              <button class="export-btn" onclick="exportarExcel()">
-                <i class="fas fa-file-excel"></i>
-                Exportar Excel
-              </button>
-              <button class="export-btn export-btn-secondary" onclick="exportarRelatorio()">
-                <i class="fas fa-file-alt"></i>
-                Exportar TXT
-              </button>
-            </div>
-          </div>
-          
-          <div class="filters-container">
+        <h1>Relatórios</h1>
+        
+        <!-- Header com layout reorganizado -->
+        <div class="top-controls">
+          <!-- Card completo com todos os controles em uma linha -->
+          <div class="filters-card">
             <form method="GET" class="date-form">
               <input type="date" name="data_inicio" id="data_inicio" value="<?= $data_inicio ?>" />
               <span class="date-separator">até</span>
@@ -1246,6 +1381,17 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
               <a href="?filtro_rapido=30dias" class="quick-filter-btn <?= ($_GET['filtro_rapido'] ?? '') === '30dias' ? 'active' : '' ?>">30 Dias</a>
               <a href="?filtro_rapido=ano" class="quick-filter-btn <?= ($_GET['filtro_rapido'] ?? '') === 'ano' ? 'active' : '' ?>">Este Ano</a>
               <a href="?filtro_rapido=total" class="quick-filter-btn <?= ($_GET['filtro_rapido'] ?? '') === 'total' ? 'active' : '' ?>">Total</a>
+            </div>
+            
+            <div class="export-buttons">
+              <button class="export-btn" onclick="exportarExcel()">
+                <i class="fas fa-file-excel"></i>
+                Exportar Excel
+              </button>
+              <button class="export-btn export-btn-secondary" onclick="exportarRelatorio()">
+                <i class="fas fa-file-alt"></i>
+                Exportar TXT
+              </button>
             </div>
           </div>
         </div>

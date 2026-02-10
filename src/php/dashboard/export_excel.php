@@ -18,15 +18,14 @@ if ($_POST['action'] === 'export_excel') {
     header('Pragma: no-cache');
     header('Expires: 0');
     
+    // Início do XML
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     echo '<?mso-application progid="Excel.Sheet"?>' . "\n";
-    
-    ?>
-    <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
-        xmlns:o="urn:schemas-microsoft-com:office:office"
-        xmlns:x="urn:schemas-microsoft-com:office:excel"
-        xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
-        xmlns:html="http://www.w3.org/TR/REC-html40">
+    echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+            xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:x="urn:schemas-microsoft-com:office:excel"
+            xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+            xmlns:html="http://www.w3.org/TR/REC-html40">
         
         <!-- Estilos CSS para Excel -->
         <Styles>
@@ -173,7 +172,7 @@ if ($_POST['action'] === 'export_excel') {
                 
                 <Row ss:Height="20">
                     <Cell ss:MergeAcross="8" ss:StyleID="Default">
-                        <Data ss:Type="String">📅 Período: <?= $data_inicio ?> até <?= $data_fim ?> | 📊 Gerado em: <?= date('d/m/Y H:i:s') ?></Data>
+                        <Data ss:Type="String">📅 Período: ' . $data_inicio . ' até ' . $data_fim . ' | 📊 Gerado em: ' . date('d/m/Y H:i:s') . '</Data>
                     </Cell>
                 </Row>
                 
@@ -200,152 +199,107 @@ if ($_POST['action'] === 'export_excel') {
                     <Cell><Data ss:Type="String"></Data></Cell>
                     <Cell><Data ss:Type="String"></Data></Cell>
                     <Cell><Data ss:Type="String"></Data></Cell>
-                </Row>
-                
-                <!-- Dados KPIs -->
-                <?php 
-                $totalDescontos = floatval($kpis['total_desconto_frete'] ?? 0) + floatval($kpis['total_desconto_cupom'] ?? 0);
-                $faturamentoLiquido = floatval($kpis['faturamento']) - $totalDescontos;
-                ?>
-                <Row>
-                    <Cell ss:StyleID="Default"><Data ss:Type="String">💵 Faturamento Líquido</Data></Cell>
-                    <Cell ss:StyleID="KPI"><Data ss:Type="Number"><?= $faturamentoLiquido ?></Data></Cell>
-                    <Cell ss:StyleID="Default"><Data ss:Type="String">🥇 Principal</Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                </Row>
-                <Row>
-                    <Cell ss:StyleID="Default"><Data ss:Type="String">📦 Total de Vendas</Data></Cell>
-                    <Cell ss:StyleID="KPI"><Data ss:Type="Number"><?= $kpis['total_vendas'] ?></Data></Cell>
-                    <Cell ss:StyleID="Default"><Data ss:Type="String">✅ Ativo</Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                </Row>
-                <Row>
-                    <Cell ss:StyleID="Default"><Data ss:Type="String">🎯 Ticket Médio</Data></Cell>
-                    <Cell ss:StyleID="KPI"><Data ss:Type="Number"><?= $kpis['ticket_medio'] ?></Data></Cell>
-                    <Cell ss:StyleID="Default"><Data ss:Type="String">📊 Calculado</Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                </Row>
-                
+                </Row>';
+    
+    // KPIs dinâmicos
+    $kpi_items = [
+        ['label' => '💰 Faturamento Total', 'value' => 'R$ ' . number_format($kpis['faturamento'], 2, ',', '.'), 'status' => '✅ Sucesso'],
+        ['label' => '🛒 Total de Vendas', 'value' => $kpis['total_vendas'] . ' pedidos', 'status' => '📈 Ativo'],
+        ['label' => '💳 Ticket Médio', 'value' => 'R$ ' . number_format($kpis['ticket_medio'], 2, ',', '.'), 'status' => '📊 Normal'],
+        ['label' => '📦 Itens Vendidos', 'value' => $kpis['itens_vendidos'] . ' unidades', 'status' => '🔥 Forte']
+    ];
+    
+    foreach ($kpi_items as $kpi) {
+        echo '<Row ss:Height="18">
+                <Cell ss:StyleID="Default"><Data ss:Type="String">' . $kpi['label'] . '</Data></Cell>
+                <Cell ss:StyleID="KPI"><Data ss:Type="String">' . $kpi['value'] . '</Data></Cell>
+                <Cell ss:StyleID="Default"><Data ss:Type="String">' . $kpi['status'] . '</Data></Cell>
+                <Cell><Data ss:Type="String"></Data></Cell>
+                <Cell><Data ss:Type="String"></Data></Cell>
+                <Cell><Data ss:Type="String"></Data></Cell>
+                <Cell><Data ss:Type="String"></Data></Cell>
+                <Cell><Data ss:Type="String"></Data></Cell>
+                <Cell><Data ss:Type="String"></Data></Cell>
+            </Row>';
+    }
+    
+    // Espaçamento e cabeçalho dos pedidos
+    echo '
                 <!-- ESPAÇAMENTO -->
                 <Row ss:Height="15">
                     <Cell><Data ss:Type="String"></Data></Cell>
                 </Row>
                 
-                <!-- BLOCO 2: EVOLUÇÃO DIÁRIA -->
+                <!-- BLOCO 2: RELATÓRIO DETALHADO DE PEDIDOS -->
                 <Row ss:Height="25">
                     <Cell ss:MergeAcross="8" ss:StyleID="SectionHeader">
-                        <Data ss:Type="String">📈 EVOLUÇÃO DIÁRIA DE VENDAS</Data>
+                        <Data ss:Type="String">📋 RELATÓRIO DETALHADO DOS PEDIDOS</Data>
                     </Cell>
                 </Row>
                 
+                <!-- Cabeçalhos da tabela -->
                 <Row ss:Height="20">
                     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">📅 Data</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">💰 Faturamento</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">📦 Pedidos</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">🎯 Ticket Médio</Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                </Row>
-                
-                <?php if (!empty($dados_evolucao)): ?>
-                    <?php foreach ($dados_evolucao as $dia): ?>
-                        <?php $ticketMedio = floatval($dia['faturamento']) / intval($dia['pedidos']); ?>
-                        <Row>
-                            <Cell ss:StyleID="Default"><Data ss:Type="String"><?= date('d/m/Y', strtotime($dia['data'])) ?></Data></Cell>
-                            <Cell ss:StyleID="Currency"><Data ss:Type="Number"><?= $dia['faturamento'] ?></Data></Cell>
-                            <Cell ss:StyleID="Default"><Data ss:Type="Number"><?= $dia['pedidos'] ?></Data></Cell>
-                            <Cell ss:StyleID="Currency"><Data ss:Type="Number"><?= $ticketMedio ?></Data></Cell>
-                            <Cell><Data ss:Type="String"></Data></Cell>
-                            <Cell><Data ss:Type="String"></Data></Cell>
-                            <Cell><Data ss:Type="String"></Data></Cell>
-                            <Cell><Data ss:Type="String"></Data></Cell>
-                            <Cell><Data ss:Type="String"></Data></Cell>
-                        </Row>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-                
-                <!-- ESPAÇAMENTO -->
-                <Row ss:Height="15">
-                    <Cell><Data ss:Type="String"></Data></Cell>
-                </Row>
-                
-                <!-- BLOCO 3: DETALHAMENTO COMPLETO -->
-                <Row ss:Height="25">
-                    <Cell ss:MergeAcross="8" ss:StyleID="SectionHeader">
-                        <Data ss:Type="String">📋 DETALHAMENTO COMPLETO DOS PEDIDOS</Data>
-                    </Cell>
-                </Row>
-                
-                <!-- Cabeçalhos da tabela de pedidos -->
-                <Row ss:Height="20">
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">📟 ID</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">📅 Data</Data></Cell>
+                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">🆔 Pedido</Data></Cell>
                     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">👤 Cliente</Data></Cell>
                     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">📦 Itens</Data></Cell>
                     <Cell ss:StyleID="TableHeader"><Data ss:Type="String">💰 Subtotal</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">🚚 Desc. Frete</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">🎫 Desc. Cupom</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">🏆 Valor Final</Data></Cell>
-                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">⚡ Status</Data></Cell>
-                </Row>
-                
-                <!-- Dados dos pedidos -->
-                <?php foreach ($lista_pedidos as $pedido): ?>
-                    <?php 
-                    $subtotal = floatval($pedido['valor_subtotal'] ?? $pedido['valor_total']);
-                    $descFrete = floatval($pedido['desconto_frete'] ?? 0);
-                    $descCupom = floatval($pedido['desconto_cupom'] ?? 0);
-                    $valorFinal = $subtotal - $descFrete - $descCupom;
-                    
-                    // Determinar estilo do status
-                    $statusStyle = "Default";
-                    switch(strtolower(str_replace(' ', '', $pedido['status']))) {
-                        case 'pago':
-                            $statusStyle = "StatusPago";
-                            break;
-                        case 'pagamentopendente':
-                            $statusStyle = "StatusPendente";
-                            break;
-                        case 'empreparacao':
-                        case 'empreparação':
-                            $statusStyle = "StatusPreparacao";
-                            break;
-                        case 'estornado':
-                            $statusStyle = "StatusEstornado";
-                            break;
-                    }
-                    ?>
-                    <Row>
-                        <Cell ss:StyleID="Default"><Data ss:Type="String">#<?= str_pad($pedido['id'], 4, '0', STR_PAD_LEFT) ?></Data></Cell>
-                        <Cell ss:StyleID="Default"><Data ss:Type="String"><?= date('d/m/Y', strtotime($pedido['data_pedido'])) ?></Data></Cell>
-                        <Cell ss:StyleID="Default"><Data ss:Type="String"><?= htmlspecialchars($pedido['cliente_nome']) ?></Data></Cell>
-                        <Cell ss:StyleID="Default"><Data ss:Type="Number"><?= $pedido['total_itens'] ?></Data></Cell>
-                        <Cell ss:StyleID="Currency"><Data ss:Type="Number"><?= $subtotal ?></Data></Cell>
-                        <Cell ss:StyleID="Currency"><Data ss:Type="Number"><?= $descFrete ?></Data></Cell>
-                        <Cell ss:StyleID="Currency"><Data ss:Type="Number"><?= $descCupom ?></Data></Cell>
-                        <Cell ss:StyleID="Currency"><Data ss:Type="Number"><?= $valorFinal ?></Data></Cell>
-                        <Cell ss:StyleID="<?= $statusStyle ?>"><Data ss:Type="String"><?= htmlspecialchars($pedido['status']) ?></Data></Cell>
-                    </Row>
-                <?php endforeach; ?>
-                
+                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">🚚 Desc.Frete</Data></Cell>
+                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">🎫 Desc.Cupom</Data></Cell>
+                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">💳 Valor Final</Data></Cell>
+                    <Cell ss:StyleID="TableHeader"><Data ss:Type="String">📊 Status</Data></Cell>
+                </Row>';
+    
+    // Dados dos pedidos
+    if (!empty($lista_pedidos)) {
+        foreach ($lista_pedidos as $pedido) {
+            // Formatar valores
+            $subtotal = $pedido['subtotal'] ?? 0;
+            $descFrete = $pedido['desconto_frete'] ?? 0;
+            $descCupom = $pedido['desconto_cupom'] ?? 0;
+            $valorFinal = $pedido['valor_total'] ?? 0;
+            
+            // Determinar estilo do status
+            $statusStyle = 'Default';
+            $status = strtolower(str_replace(' ', '', $pedido['status'] ?? ''));
+            
+            switch ($status) {
+                case 'pago':
+                case 'entregue':
+                case 'pedidoconfirmado':
+                    $statusStyle = 'StatusPago';
+                    break;
+                case 'pagamentopendente':
+                case 'pendente':
+                    $statusStyle = 'StatusPendente';
+                    break;
+                case 'empreparacao':
+                case 'empreparação':
+                case 'pedidorecebido':
+                    $statusStyle = 'StatusPreparacao';
+                    break;
+                case 'estornado':
+                case 'cancelado':
+                    $statusStyle = 'StatusEstornado';
+                    break;
+            }
+            
+            echo '<Row ss:Height="16">
+                    <Cell ss:StyleID="Default"><Data ss:Type="String">' . date('d/m/Y', strtotime($pedido['data_pedido'])) . '</Data></Cell>
+                    <Cell ss:StyleID="Default"><Data ss:Type="String">#' . $pedido['id'] . '</Data></Cell>
+                    <Cell ss:StyleID="Default"><Data ss:Type="String">' . htmlspecialchars($pedido['cliente_nome'] ?? 'N/A') . '</Data></Cell>
+                    <Cell ss:StyleID="Default"><Data ss:Type="Number">' . ($pedido['total_itens'] ?? 0) . '</Data></Cell>
+                    <Cell ss:StyleID="Currency"><Data ss:Type="Number">' . $subtotal . '</Data></Cell>
+                    <Cell ss:StyleID="Currency"><Data ss:Type="Number">' . $descFrete . '</Data></Cell>
+                    <Cell ss:StyleID="Currency"><Data ss:Type="Number">' . $descCupom . '</Data></Cell>
+                    <Cell ss:StyleID="Currency"><Data ss:Type="Number">' . $valorFinal . '</Data></Cell>
+                    <Cell ss:StyleID="' . $statusStyle . '"><Data ss:Type="String">' . htmlspecialchars($pedido['status']) . '</Data></Cell>
+                </Row>';
+        }
+    }
+    
+    // Rodapé e fechamento
+    echo '
                 <!-- ESPAÇAMENTO -->
                 <Row ss:Height="15">
                     <Cell><Data ss:Type="String"></Data></Cell>
@@ -354,14 +308,14 @@ if ($_POST['action'] === 'export_excel') {
                 <!-- RODAPÉ -->
                 <Row ss:Height="20">
                     <Cell ss:MergeAcross="8" ss:StyleID="Default">
-                        <Data ss:Type="String">🏢 Relatório gerado automaticamente pelo Sistema D&amp;Z Dashboard © <?= date('Y') ?></Data>
+                        <Data ss:Type="String">🏢 Relatório gerado automaticamente pelo Sistema D&amp;Z Dashboard © ' . date('Y') . '</Data>
                     </Cell>
                 </Row>
                 
             </Table>
         </Worksheet>
-    </Workbook>
-    <?php
+    </Workbook>';
+    
     exit;
 }
 ?>
