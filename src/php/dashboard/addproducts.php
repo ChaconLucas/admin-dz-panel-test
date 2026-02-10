@@ -1773,6 +1773,25 @@ if (mysqli_num_rows($categorias_result) == 0) {
                     <div class="form-help">Nome completo e descritivo do produto</div>
                   </div>
 
+                  <!-- Assistente de IA Integrado -->
+                  <div id="aiAssistant" class="ai-assistant-bar" style="display: none;">
+                    <div class="ai-assistant-content">
+                      <button type="button" id="aiGenerateBtn" class="btn-ai-inline" onclick="generateDescriptionDirect()">
+                        <i id="aiIcon" class="fas fa-sparkles"></i>
+                        <span id="aiButtonText">Gerar Descrição com IA</span>
+                      </button>
+                      
+                      <div class="tone-selector-inline">
+                        <label class="tone-label">Tom:</label>
+                        <select id="toneSelector" class="tone-select">
+                          <option value="vendedor" selected>Vendedor</option>
+                          <option value="tecnico">Técnico</option>
+                          <option value="elegante">Elegante</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="form-group">
                     <label class="form-label">
                       <span class="material-symbols-sharp">description</span>
@@ -2914,6 +2933,243 @@ window.showWarning = function(message) {
 window.showInfo = function(message) {
     createToast(message, 'info');
 };
+</script>
+
+<!-- Estilos do Assistente de IA -->
+<style>
+/* Assistente de IA integrado */
+.ai-assistant-bar {
+  background: linear-gradient(135deg, rgba(255, 0, 204, 0.1), rgba(255, 0, 153, 0.1));
+  border: 2px solid rgba(255, 0, 204, 0.2);
+  border-radius: var(--border-radius-2);
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(-10px);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.ai-assistant-bar.show {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.ai-assistant-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.btn-ai-inline {
+  background: linear-gradient(135deg, #ff00cc, #ff0099);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--border-radius-2);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 0, 204, 0.3);
+  min-width: 180px;
+  justify-content: center;
+}
+
+.btn-ai-inline:hover {
+  background: linear-gradient(135deg, #ff0099, #ff00cc);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 0, 204, 0.4);
+}
+
+.btn-ai-inline:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.tone-selector-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tone-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-dark-variant);
+}
+
+.tone-select {
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 0, 204, 0.3);
+  border-radius: var(--border-radius-1);
+  background: white;
+  color: var(--color-dark);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tone-select:focus {
+  outline: none;
+  border-color: #ff00cc;
+  box-shadow: 0 0 0 2px rgba(255, 0, 204, 0.2);
+}
+
+.loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .ai-assistant-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn-ai-inline {
+    width: 100%;
+  }
+  
+  .tone-selector-inline {
+    justify-content: center;
+  }
+}
+</style>
+
+<!-- JavaScript do Assistente de IA -->
+<script>
+// Sistema do Assistente de IA
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementos do formulário
+    const nameField = document.querySelector('input[name="nome"]');
+    const categoryField = document.querySelector('input[name="categoria"]');
+    const brandField = document.querySelector('input[name="marca"]');
+    const aiAssistant = document.getElementById('aiAssistant');
+    
+    function checkFieldsAndToggleAssistant() {
+        const hasName = nameField && nameField.value.trim().length > 0;
+        const hasCategory = categoryField && categoryField.value.trim().length > 0;
+        const hasBrand = brandField && brandField.value.trim().length > 0;
+        
+        if (hasName && hasCategory && hasBrand) {
+            if (aiAssistant && !aiAssistant.classList.contains('show')) {
+                aiAssistant.style.display = 'block';
+                setTimeout(() => {
+                    aiAssistant.classList.add('show');
+                }, 10);
+            }
+        } else {
+            if (aiAssistant && aiAssistant.classList.contains('show')) {
+                aiAssistant.classList.remove('show');
+                setTimeout(() => {
+                    if (!aiAssistant.classList.contains('show')) {
+                        aiAssistant.style.display = 'none';
+                    }
+                }, 300);
+            }
+        }
+    }
+    
+    // Adicionar listeners
+    if (nameField) nameField.addEventListener('input', checkFieldsAndToggleAssistant);
+    if (categoryField) categoryField.addEventListener('input', checkFieldsAndToggleAssistant);
+    if (brandField) brandField.addEventListener('input', checkFieldsAndToggleAssistant);
+    
+    // Verificação inicial
+    checkFieldsAndToggleAssistant();
+    
+    // Detectar modo de edição
+    const isEditMode = window.location.search.includes('edit=');
+    if (isEditMode) {
+        setTimeout(checkFieldsAndToggleAssistant, 100);
+        setTimeout(checkFieldsAndToggleAssistant, 300);
+        setTimeout(checkFieldsAndToggleAssistant, 600);
+    }
+});
+
+// Verificação adicional quando a página estiver totalmente carregada
+window.addEventListener('load', function() {
+    const nameField = document.querySelector('input[name="nome"]');
+    const categoryField = document.querySelector('input[name="categoria"]');
+    const brandField = document.querySelector('input[name="marca"]');
+    const aiAssistant = document.getElementById('aiAssistant');
+    
+    function checkFieldsAndToggleAssistantFinal() {
+        const hasName = nameField && nameField.value.trim().length > 0;
+        const hasCategory = categoryField && categoryField.value.trim().length > 0;
+        const hasBrand = brandField && brandField.value.trim().length > 0;
+        
+        if (hasName && hasCategory && hasBrand) {
+            if (aiAssistant && !aiAssistant.classList.contains('show')) {
+                aiAssistant.style.display = 'block';
+                setTimeout(() => {
+                    aiAssistant.classList.add('show');
+                }, 10);
+            }
+        }
+    }
+    
+    setTimeout(checkFieldsAndToggleAssistantFinal, 200);
+});
+
+// Função de geração de descrição (configurar API)
+async function generateDescriptionDirect() {
+    const name = document.querySelector('input[name="nome"]')?.value?.trim() || '';
+    const category = document.querySelector('input[name="categoria"]')?.value?.trim() || '';
+    const brand = document.querySelector('input[name="marca"]')?.value?.trim() || '';
+    const tone = document.getElementById('toneSelector')?.value || 'vendedor';
+    
+    if (!name || !category || !brand) {
+        showWarning('⚠️ Preencha Nome, Categoria e Marca antes de gerar a descrição!');
+        return;
+    }
+    
+    // Elementos da interface
+    const generateBtn = document.getElementById('aiGenerateBtn');
+    const buttonText = document.getElementById('aiButtonText');
+    const aiIcon = document.getElementById('aiIcon');
+    const originalText = buttonText.textContent;
+    
+    // Mostrar loading
+    generateBtn.disabled = true;
+    buttonText.textContent = 'Gerando...';
+    aiIcon.className = 'loading-spinner';
+    
+    try {
+        // TODO: Configurar sua API de IA aqui
+        showWarning('⚙️ Configure a API de IA na função generateDescriptionDirect() para usar esta funcionalidade!');
+        
+        // Simular delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+    } catch (error) {
+        console.error('Erro:', error);
+        showError('❌ Erro ao gerar descrição.');
+    } finally {
+        // Restaurar botão
+        generateBtn.disabled = false;
+        buttonText.textContent = originalText;
+        aiIcon.className = 'fas fa-sparkles';
+    }
+}
 </script>
 
 <!-- Toast Container -->
