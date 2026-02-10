@@ -205,12 +205,12 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
     
     <style>
       .analytics-header {
-        background: white;
+        background: var(--color-white);
         border-radius: 12px;
         padding: 1.25rem 1.5rem;
         margin-bottom: 2rem;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        border: 1px solid #e9ecef;
+        box-shadow: var(--box-shadow);
+        border: 1px solid var(--color-info-light);
       }
       
       .header-title {
@@ -222,7 +222,7 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       
       .header-title h1 {
         margin: 0;
-        color: #2c3e50;
+        color: var(--color-dark);
         font-size: 1.5rem;
         font-weight: 600;
         display: flex;
@@ -268,6 +268,189 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         gap: 0.5rem;
       }
       
+      /* Modal de Sucesso Elegante */
+      .success-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        z-index: 99999;
+        animation: fadeIn 0.3s ease;
+      }
+      
+      .success-modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #ff00cc 0%, #e600b3 100%);
+        border-radius: 20px;
+        padding: 0;
+        min-width: 400px;
+        max-width: 500px;
+        box-shadow: 0 20px 60px rgba(255, 0, 204, 0.4);
+        animation: slideIn 0.4s ease-out;
+        overflow: hidden;
+      }
+      
+      .modal-header {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 20px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      .modal-icon {
+        font-size: 3rem;
+        margin-bottom: 10px;
+        animation: bounce 0.6s ease-in-out;
+      }
+      
+      .modal-title {
+        color: white;
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      
+      .modal-body {
+        padding: 25px;
+        background: var(--color-white);
+      }
+      
+      .modal-filename {
+        background: #f8f9fa;
+        border: 2px dashed #ff00cc;
+        border-radius: 12px;
+        padding: 15px;
+        margin: 15px 0;
+        text-align: center;
+        font-weight: 600;
+        color: #ff00cc;
+        font-size: 0.95rem;
+      }
+      
+      .modal-features {
+        margin: 20px 0;
+      }
+      
+      .modal-features h4 {
+        color: #333;
+        margin-bottom: 12px;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .feature-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-left: 0;
+        padding-left: 0;
+        list-style: none;
+      }
+      
+      .feature-list li {
+        background: #f8f9fa;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        color: #495057;
+        border-left: 3px solid #ff00cc;
+      }
+      
+      .modal-footer {
+        text-align: center;
+        padding: 20px 25px;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+      }
+      
+      .modal-close-btn {
+        background: linear-gradient(135deg, #ff00cc 0%, #e600b3 100%);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 0, 204, 0.3);
+      }
+      
+      .modal-close-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 0, 204, 0.4);
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      @keyframes progress {
+        0% { 
+          transform: translateX(-100%); 
+          opacity: 0.8;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% { 
+          transform: translateX(100%);
+          opacity: 0.8;
+        }
+      }
+      
+      @keyframes fillProgress {
+        0% { width: 0%; }
+        100% { width: 100%; }
+      }
+      
+      @keyframes shimmer {
+        0% { 
+          background-position: -200px 0; 
+        }
+        100% { 
+          background-position: 200px 0; 
+        }
+      }
+      
+      @keyframes slideIn {
+        from { 
+          opacity: 0;
+          transform: translate(-50%, -60%);
+        }
+        to { 
+          opacity: 1;
+          transform: translate(-50%, -50%);
+        }
+      }
+      
+      @keyframes bounce {
+        0%, 20%, 53%, 80%, 100% {
+          animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+          transform: translate3d(0,0,0);
+        }
+        40%, 43% {
+          animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+          transform: translate3d(0,-15px,0);
+        }
+        70% {
+          animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+          transform: translate3d(0,-7px,0);
+        }
+        90% {
+          transform: translate3d(0,-2px,0);
+        }
+      }
+      
       .filters-container {
         display: flex;
         gap: 1rem;
@@ -279,30 +462,30 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        background: #f8f9fa;
+        background: var(--color-background);
         padding: 0.5rem 0.75rem;
         border-radius: 8px;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--color-light);
         transition: all 0.2s ease;
       }
       
       .date-form:focus-within {
         border-color: #ff00cc;
-        background: white;
+        background: var(--color-white);
       }
       
       .date-form input[type="date"] {
         border: none;
         background: transparent;
         font-size: 0.875rem;
-        color: #495057;
+        color: var(--color-dark);
         outline: none;
         min-width: 120px;
         cursor: pointer;
       }
       
       .date-separator {
-        color: #6c757d;
+        color: var(--color-info-dark);
         font-weight: 400;
         font-size: 0.875rem;
       }
@@ -327,10 +510,10 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       .quick-filters {
         display: flex;
         gap: 0.5rem;
-        background: #f8f9fa;
+        background: var(--color-background);
         padding: 0.375rem;
         border-radius: 8px;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--color-light);
       }
       
       .quick-filter-btn {
@@ -343,13 +526,13 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         font-size: 0.8rem;
         font-weight: 500;
         text-decoration: none;
-        color: #495057;
+        color: var(--color-dark);
       }
       
       .quick-filter-btn:hover {
-        background: white;
-        color: #343a40;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        background: var(--color-white);
+        color: var(--color-dark);
+        box-shadow: var(--box-shadow);
       }
       
       .quick-filter-btn.active {
@@ -389,49 +572,106 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       
       .kpis-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
         margin-bottom: 2rem;
       }
       
       .kpi-card {
-        background: white;
-        padding: 1.25rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        background: linear-gradient(145deg, var(--color-white) 0%, rgba(255, 255, 255, 0.95) 100%);
+        padding: 2rem 1.5rem;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
         text-align: center;
-        border: 1px solid #e9ecef;
-        transition: all 0.2s ease;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
       }
       
-      .kpi-card:before {
+      .kpi-card::before {
         content: "";
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        height: 3px;
-        background: #ff00cc;
-        border-radius: 10px 10px 0 0;
+        height: 4px;
+        background: linear-gradient(90deg, #ff00cc 0%, #e600b3 35%, #ff6b9d 100%);
+        border-radius: 20px 20px 0 0;
+      }
+      
+      .kpi-card::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 0, 204, 0.05) 0%, transparent 70%);
+        opacity: 0;
+        transition: opacity 0.4s ease;
       }
       
       .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 20px 60px rgba(255, 0, 204, 0.15), 
+                    0 8px 32px rgba(0, 0, 0, 0.12);
+      }
+      
+      .kpi-card:hover::after {
+        opacity: 1;
+      }
+      
+      .kpi-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 1rem;
+        background: linear-gradient(135deg, #ff00cc 0%, #e600b3 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        box-shadow: 0 4px 16px rgba(255, 0, 204, 0.3);
+      }
+      
+      .kpi-title {
+        color: var(--color-info-dark);
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.75rem;
+        opacity: 0.8;
       }
       
       .kpi-value {
-        font-size: 1.875rem;
-        font-weight: 700;
-        color: #ff00cc;
-        margin: 0.5rem 0;
+        font-size: 2.25rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #ff00cc 0%, #e600b3 50%, #ff6b9d 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0.75rem 0;
+        line-height: 1.1;
       }
       
-      .kpi-label {
-        color: #6c757d;
-        font-size: 0.875rem;
+      .kpi-subtitle {
+        color: var(--color-info-dark);
+        font-size: 0.8rem;
         font-weight: 500;
+        opacity: 0.7;
+        margin-top: 0.5rem;
+      }
+      
+      .kpi-details {
+        color: var(--color-info-dark);
+        font-size: 0.75rem;
+        font-weight: 400;
+        margin-top: 0.5rem;
+        opacity: 0.6;
       }
       
       .charts-grid {
@@ -442,11 +682,11 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       }
       
       .chart-container {
-        background: white;
+        background: var(--color-white);
         padding: 1.25rem;
         border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-        border: 1px solid #e9ecef;
+        box-shadow: var(--box-shadow);
+        border: 1px solid var(--color-info-light);
         transition: all 0.2s ease;
       }
       
@@ -457,28 +697,28 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
       
       .chart-container h3 {
         margin-top: 0;
-        color: #2c3e50;
+        color: var(--color-dark);
         font-weight: 600;
         font-size: 1.1rem;
         padding-bottom: 0.75rem;
-        border-bottom: 1px solid #e9ecef;
+        border-bottom: 1px solid var(--color-info-light);
         margin-bottom: 1rem;
       }
       
       .orders-table {
-        background: white;
+        background: var(--color-white);
         border-radius: 10px;
         overflow: hidden;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-        border: 1px solid #e9ecef;
+        box-shadow: var(--box-shadow);
+        border: 1px solid var(--color-info-light);
       }
       
       .orders-table h3 {
         margin: 0;
         padding: 1.25rem;
-        background: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-        color: #2c3e50;
+        background: var(--color-background);
+        border-bottom: 1px solid var(--color-info-light);
+        color: var(--color-dark);
         font-weight: 600;
         font-size: 1.1rem;
       }
@@ -576,6 +816,294 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         background: #d1e7dd; 
         color: #0f5132; 
         border: 1px solid #badbcc;
+      }
+      
+      /* Estilos do Modal Excel */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        z-index: 99999;
+        animation: fadeIn 0.3s ease;
+      }
+      
+      .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--color-white);
+        border-radius: 20px;
+        padding: 0;
+        min-width: 450px;
+        max-width: 550px;
+        box-shadow: var(--box-shadow);
+        animation: slideIn 0.4s ease-out;
+        overflow: hidden;
+      }
+      
+      .modal-header {
+        background: linear-gradient(135deg, #ff6b9d, #c44569);
+        color: white;
+        padding: 20px;
+        position: relative;
+        text-align: center;
+      }
+      
+      .success-icon {
+        font-size: 40px;
+        margin-bottom: 10px;
+        display: block;
+      }
+      
+      .modal-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      
+      .close-btn {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        font-size: 28px;
+        color: white;
+        cursor: pointer;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+      }
+      
+      .close-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+      }
+      
+      .modal-body {
+        padding: 25px;
+      }
+      
+      .file-info {
+        display: flex;
+        align-items: center;
+        background: #f8f9ff;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border-left: 4px solid #ff6b9d;
+      }
+      
+      .file-icon {
+        font-size: 30px;
+        margin-right: 15px;
+      }
+      
+      .file-details p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+      
+      .status-success {
+        color: #22c55e;
+        font-weight: bold;
+        padding: 2px 8px;
+        background: #dcfce7;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+      
+      .features-list h3 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 16px;
+      }
+      
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      
+      .feature-item {
+        background: #f1f5f9;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #475569;
+        border-left: 3px solid #ff6b9d;
+      }
+      
+      .download-status {
+        background: #f0fff4;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        border: 1px solid #bbf7d0;
+      }
+      
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
+      
+      .progress-fill {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(45deg, #ff6b9d, #c44569);
+        border-radius: 4px;
+        animation: fillProgress 2s ease-out forwards;
+      }
+      
+      .modal-footer {
+        background: #f8fafc;
+        padding: 20px;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+      }
+      
+      .btn-elegant {
+        background: linear-gradient(135deg, #ff6b9d, #c44569);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+      }
+      
+      .btn-elegant:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
+      }
+      
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -60%);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%);
+        }
+      }
+      
+      @keyframes slideOut {
+        from {
+          opacity: 1;
+          transform: translate(-50%, -50%);
+        }
+        to {
+          opacity: 0;
+          transform: translate(-50%, -40%);
+        }
+      }
+
+      /* Regras específicas para o modo escuro */
+      body.dark-theme-variables .header-title h1 {
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .date-form {
+        background: var(--color-background) !important;
+        border-color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .date-form input[type="date"] {
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .date-separator {
+        color: var(--color-info-dark) !important;
+      }
+      
+      body.dark-theme-variables .quick-filters {
+        background: var(--color-background) !important;
+        border-color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .quick-filter-btn {
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .quick-filter-btn:hover {
+        background: var(--color-white) !important;
+        color: var(--color-dark) !important;
+      }
+      
+      body.dark-theme-variables .submit-btn {
+        background: #007bff !important;
+        color: white !important;
+      }
+      
+      body.dark-theme-variables .submit-btn:hover {
+        background: #0056b3 !important;
+      }
+      
+      body.dark-theme-variables .analytics-info h3 {
+        color: var(--color-dark) !important;
+      }
+      
+      /* Regras específicas para os novos cards de KPI no modo escuro */
+      body.dark-theme-variables .kpi-card {
+        background: linear-gradient(145deg, var(--color-background) 0%, rgba(26, 33, 44, 0.95) 100%) !important;
+        border-color: var(--color-dark) !important;
+        backdrop-filter: blur(15px) !important;
+      }
+      
+      body.dark-theme-variables .kpi-card::after {
+        background: radial-gradient(circle, rgba(255, 0, 204, 0.1) 0%, transparent 70%) !important;
+      }
+      
+      body.dark-theme-variables .kpi-title {
+        color: var(--color-white) !important;
+      }
+      
+      body.dark-theme-variables .kpi-subtitle {
+        color: var(--color-info-light) !important;
+      }
+      
+      body.dark-theme-variables .kpi-details {
+        color: var(--color-info-light) !important;
+      }
+      
+      /* Responsividade melhorada para os cards */
+      @media (max-width: 768px) {
+        .kpis-grid {
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+        }
+        
+        .kpi-card {
+          padding: 1.5rem 1rem;
+        }
+        
+        .kpi-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 1.25rem;
+        }
+        
+        .kpi-value {
+          font-size: 1.875rem;
+        }
       }
     </style>
 
@@ -725,40 +1253,51 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
         <!-- Cards de KPIs -->
         <div class="kpis-grid">
           <div class="kpi-card">
-            <div class="kpi-label">Faturamento Líquido</div>
+            <div class="kpi-icon">
+              <i class="fas fa-coins"></i>
+            </div>
+            <div class="kpi-title">Faturamento Líquido</div>
             <div class="kpi-value">R$ <?= number_format($kpis['faturamento'], 2, ',', '.') ?></div>
-            <div class="kpi-label" style="font-size: 0.75rem; color: #28a745;">
-              Valor final recebido
-            </div>
+            <div class="kpi-subtitle">Valor final recebido</div>
           </div>
           
           <div class="kpi-card">
-            <div class="kpi-label">Vendas</div>
+            <div class="kpi-icon">
+              <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="kpi-title">Vendas</div>
             <div class="kpi-value"><?= $kpis['total_vendas'] ?></div>
-            <div class="kpi-label">pedidos realizados</div>
+            <div class="kpi-subtitle">pedidos realizados</div>
           </div>
           
           <div class="kpi-card">
-            <div class="kpi-label">Ticket Médio</div>
-            <div class="kpi-value">R$ <?= number_format($kpis['ticket_medio'], 2, ',', '.') ?></div>
-            <div class="kpi-label">valor médio por pedido</div>
-          </div>
-          
-          <div class="kpi-card">
-            <div class="kpi-label">Descontos Dados</div>
-            <div class="kpi-value" style="color: #dc3545;">
-              R$ <?= number_format(($kpis['total_desconto_frete'] + $kpis['total_desconto_cupom']), 2, ',', '.') ?>
+            <div class="kpi-icon">
+              <i class="fas fa-chart-line"></i>
             </div>
-            <div class="kpi-label" style="font-size: 0.75rem;">
-              Frete: R$ <?= number_format($kpis['total_desconto_frete'], 2, ',', '.') ?> |
+            <div class="kpi-title">Ticket Médio</div>
+            <div class="kpi-value">R$ <?= number_format($kpis['ticket_medio'], 2, ',', '.') ?></div>
+            <div class="kpi-subtitle">valor médio por pedido</div>
+          </div>
+          
+          <div class="kpi-card">
+            <div class="kpi-icon">
+              <i class="fas fa-percentage"></i>
+            </div>
+            <div class="kpi-title">Descontos Dados</div>
+            <div class="kpi-value">R$ <?= number_format(($kpis['total_desconto_frete'] + $kpis['total_desconto_cupom']), 2, ',', '.') ?></div>
+            <div class="kpi-details">
+              Frete: R$ <?= number_format($kpis['total_desconto_frete'], 2, ',', '.') ?> • 
               Cupom: R$ <?= number_format($kpis['total_desconto_cupom'], 2, ',', '.') ?>
             </div>
           </div>
           
           <div class="kpi-card">
-            <div class="kpi-label">Itens Vendidos</div>
+            <div class="kpi-icon">
+              <i class="fas fa-box"></i>
+            </div>
+            <div class="kpi-title">Itens Vendidos</div>
             <div class="kpi-value"><?= $kpis['itens_vendidos'] ?></div>
-            <div class="kpi-label">produtos saíram do estoque</div>
+            <div class="kpi-subtitle">produtos saíram do estoque</div>
           </div>
         </div>
         
@@ -1105,182 +1644,165 @@ function exportarExcel() {
     const dadosEvolucao = <?= json_encode($dados_evolucao) ?>;
     const dadosCategorias = <?= json_encode($dados_categorias) ?>;
     
-    // Criar conteúdo CSV elegante e bem formatado
-    let csvContent = '\uFEFF'; // BOM para UTF-8
+    // Criar formulário para enviar dados via POST para o exportador Excel
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'export_excel.php';
+    form.style.display = 'none';
     
-    // ═══════════════ CABEÇALHO ELEGANTE ═══════════════
-    csvContent += ";;;;;;;;;;;;;;;\n";
-    csvContent += ";🏢 D&Z DASHBOARD - RELATÓRIO EXECUTIVO;;;;;;;;;;;;;;\n";
-    csvContent += ";;;;;;;;;;;;;;;\n";
-    csvContent += ";📅 Data de Geração:;" + new Date().toLocaleString('pt-BR') + ";;;;;;;;;;;;;\n";
-    csvContent += ";📊 Período Analisado:;" + dataInicio + " até " + dataFim + ";;;;;;;;;;;;;\n";
-    csvContent += ";📈 Total de Registros:;" + dadosList.length + " pedidos;;;;;;;;;;;;;\n";
-    csvContent += ";;;;;;;;;;;;;;;\n";
-    csvContent += "═══════════════════════════════════════════════════════\n\n";
+    // Adicionar campos do formulário
+    const fields = {
+        action: 'export_excel',
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        kpis: JSON.stringify(kpis),
+        lista_pedidos: JSON.stringify(dadosList),
+        dados_evolucao: JSON.stringify(dadosEvolucao),
+        dados_categorias: JSON.stringify(dadosCategorias)
+    };
     
-    // 🎯 RESUMO EXECUTIVO - KPIs EM DESTAQUE
-    csvContent += "🎯 RESUMO EXECUTIVO;;;;;;;;;;;;;\n";
-    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-    csvContent += "Indicador;💰 Valor;📊 Unidade;📈 Status;;;;;;;;;;\n";
-    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-    csvContent += "📦 Total de Vendas;" + kpis.total_vendas + ";unidades;✅ Ativo;;;;;;;;;;\n";
-    csvContent += "💵 Faturamento Bruto;R$ " + parseFloat(kpis.faturamento).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";reais;✅ Ativo;;;;;;;;;;\n";
-    csvContent += "🎯 Ticket Médio;R$ " + parseFloat(kpis.ticket_medio).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";reais;📊 Calculado;;;;;;;;;;\n";
-    csvContent += "📱 Itens Vendidos;" + kpis.itens_vendidos + ";unidades;✅ Ativo;;;;;;;;;;\n";
-    csvContent += "🚚 Desconto Frete;R$ " + parseFloat(kpis.total_desconto_frete || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";economia;💰 Benefício;;;;;;;;;;\n";
-    csvContent += "🎫 Desconto Cupom;R$ " + parseFloat(kpis.total_desconto_cupom || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";economia;💰 Benefício;;;;;;;;;;\n";
-    
-    // Calcular dados extras com visual
-    const totalDescontos = parseFloat(kpis.total_desconto_frete || 0) + parseFloat(kpis.total_desconto_cupom || 0);
-    const faturamentoLiquido = parseFloat(kpis.faturamento) - totalDescontos;
-    
-    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-    csvContent += "💎 Total Descontos;R$ " + totalDescontos.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";economia;⭐ Destaque;;;;;;;;;;\n";
-    csvContent += "🏆 Faturamento Líquido;R$ " + faturamentoLiquido.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";final;🥇 Principal;;;;;;;;;;\n";
-    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
-    
-    // 📈 EVOLUÇÃO TEMPORAL ELEGANTE
-    csvContent += "📈 EVOLUÇÃO DIÁRIA DE VENDAS;;;;;;;;;;;;;\n";
-    csvContent += "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n";
-    csvContent += "┃ 📅 Data;💰 Faturamento;📦 Pedidos;🎯 Ticket Médio;📊 Performance;;;;;;;;;┃\n";
-    csvContent += "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n";
-    
-    if (dadosEvolucao && dadosEvolucao.length > 0) {
-        dadosEvolucao.forEach(dia => {
-            const ticketMedio = parseFloat(dia.faturamento) / parseInt(dia.pedidos);
-            const performance = ticketMedio > parseFloat(kpis.ticket_medio) ? "🔥 Acima" : "📊 Normal";
-            csvContent += "┃ " + new Date(dia.data).toLocaleDateString('pt-BR') + ";";
-            csvContent += "R$ " + parseFloat(dia.faturamento).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
-            csvContent += dia.pedidos + " un.;";
-            csvContent += "R$ " + ticketMedio.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
-            csvContent += performance + ";;;;;;;;;┃\n";
-        });
-    }
-    csvContent += "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n";
-    
-    // 🏆 TOP CATEGORIAS COM VISUAL ATRATIVO
-    csvContent += "🏆 TOP 5 CATEGORIAS MAIS VENDIDAS;;;;;;;;;;;;;\n";
-    csvContent += "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n";
-    csvContent += "🥇 Posição;📂 Categoria;📦 Quantidade;💰 Valor;📊 % Total;🎯 Status;;;;;;;;;;\n";
-    csvContent += "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n";
-    
-    if (dadosCategorias && dadosCategorias.length > 0) {
-        const totalCategorias = dadosCategorias.reduce((sum, cat) => sum + parseFloat(cat.valor), 0);
-        const medalhas = ["🥇", "🥈", "🥉", "🏅", "🏆"];
-        dadosCategorias.forEach((cat, index) => {
-            const percentual = (parseFloat(cat.valor) / totalCategorias * 100).toFixed(1);
-            const status = index === 0 ? "👑 Líder" : index < 3 ? "⭐ Top 3" : "📈 Destaque";
-            csvContent += medalhas[index] + " " + (index + 1) + "º Lugar;" + cat.categoria + ";" + cat.quantidade + " un.;";
-            csvContent += "R$ " + parseFloat(cat.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";" + percentual + "%;" + status + ";;;;;;;;;;\n";
-        });
-    }
-    csvContent += "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n\n";
-    
-    // 📋 DETALHAMENTO COMPLETO COM DESIGN ELEGANTE
-    csvContent += "📋 DETALHAMENTO COMPLETO DOS PEDIDOS\n";
-    csvContent += "╔═══════════════════════════════════════════════════════════════════════════════════════════════════╗\n";
-    csvContent += "║ 📅 Data;🕐 Hora;📟 ID;👤 Cliente;📦 Itens;💰 Subtotal;🚚 Frete;🎫 Cupom;💎 Total Desc;🏆 Final;💯 Economia;💳 Pagto;📊 Parc;⚡ Status;📝 Obs ║\n";
-    csvContent += "╠═══════════════════════════════════════════════════════════════════════════════════════════════════╣\n";
-    
-    dadosList.forEach((pedido, index) => {
-        const dataHora = new Date(pedido.data_pedido);
-        const data = dataHora.toLocaleDateString('pt-BR');
-        const hora = dataHora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
-        const id = String(pedido.id).padStart(4, '0');
-        const subtotal = parseFloat(pedido.valor_subtotal || pedido.valor_total);
-        const descFrete = parseFloat(pedido.desconto_frete || 0);
-        const descCupom = parseFloat(pedido.desconto_cupom || 0);
-        const totalDesconto = descFrete + descCupom;
-        const valorFinal = subtotal - totalDesconto;
-        const economiaPercent = subtotal > 0 ? (totalDesconto / subtotal * 100).toFixed(1) : 0;
-        
-        // Status com emoji
-        const statusEmoji = pedido.status === 'Pago' ? '💚' : 
-                          pedido.status === 'Estornado' ? '🔴' : 
-                          pedido.status === 'Em Preparação' ? '🔵' : 
-                          pedido.status === 'Pedido Confirmado' ? '🟢' : '⚪';
-        
-        csvContent += "║ " + data + ";" + hora + ";#" + id + ";" + pedido.cliente_nome.replace(/[;,]/g, ' ').substring(0, 15) + ";";
-        csvContent += pedido.total_itens + " un.;";
-        csvContent += "R$ " + subtotal.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
-        csvContent += descFrete > 0 ? "R$ " + descFrete.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : "R$ 0,00";
-        csvContent += ";";
-        csvContent += descCupom > 0 ? "R$ " + descCupom.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : "R$ 0,00";
-        csvContent += ";";
-        csvContent += "R$ " + totalDesconto.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
-        csvContent += "R$ " + valorFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";" + economiaPercent + "%;";
-        csvContent += (pedido.forma_pagamento || 'Não inf.').substring(0, 10) + ";";
-        csvContent += (pedido.parcelas > 1 ? pedido.parcelas + 'x' : 'À vista') + ";";
-        csvContent += statusEmoji + " " + pedido.status + ";";
-        
-        // Observações inteligentes
-        let obs = '';
-        if (pedido.status === 'Estornado') obs = '⚠️ Estorno';
-        else if (totalDesconto > 20) obs = '🎉 Grande desc.';
-        else if (pedido.parcelas > 6) obs = '⏳ Longo prazo';
-        else if (valorFinal > 500) obs = '💎 Alto valor';
-        else obs = '✅ Normal';
-        
-        csvContent += obs + " ║\n";
+    Object.keys(fields).forEach(key => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = fields[key];
+        form.appendChild(input);
     });
     
-    csvContent += "╚═══════════════════════════════════════════════════════════════════════════════════════════════════╝\n\n";
-    
-    // 📊 ESTATÍSTICAS AVANÇADAS COM VISUAL
-    csvContent += "📊 ESTATÍSTICAS E INSIGHTS AVANÇADOS\n";
-    csvContent += "★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★\n";
-    
-    const totalPedidos = dadosList.length;
-    const pedidosComDesconto = dadosList.filter(p => (parseFloat(p.desconto_frete || 0) + parseFloat(p.desconto_cupom || 0)) > 0).length;
-    const pedidosParcelados = dadosList.filter(p => p.parcelas > 1).length;
-    const pedidosAltoValor = dadosList.filter(p => parseFloat(p.valor_total) > 300).length;
-    
-    csvContent += "🔢 Total de Pedidos Analisados;;" + totalPedidos + " pedidos;100%;🎯 Base completa;;;;;;;;;\n";
-    csvContent += "💰 Pedidos com Desconto;;" + pedidosComDesconto + " pedidos;" + (pedidosComDesconto/totalPedidos*100).toFixed(1) + "%;🎁 Economia ativa;;;;;;;;;\n";
-    csvContent += "💳 Pedidos Parcelados;;" + pedidosParcelados + " pedidos;" + (pedidosParcelados/totalPedidos*100).toFixed(1) + "%;📊 Financiamento;;;;;;;;;\n";
-    csvContent += "💎 Pedidos Alto Valor (>R$300);;" + pedidosAltoValor + " pedidos;" + (pedidosAltoValor/totalPedidos*100).toFixed(1) + "%;🏆 Premium;;;;;;;;;\n";
-    csvContent += "✅ Taxa de Aprovação;;100%%;100%;🎯 Excelente;;;;;;;;;\n";
-    
-    csvContent += "\n🏷️ DISTRIBUIÇÃO POR STATUS;;;;;;;;;;;;;\n";
-    csvContent += "▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼\n";
-    
-    const statusCount = {};
-    dadosList.forEach(p => {
-        statusCount[p.status] = (statusCount[p.status] || 0) + 1;
-    });
-    
-    Object.entries(statusCount).forEach(([status, count]) => {
-        const emoji = status === 'Pago' ? '💚' : 
-                     status === 'Estornado' ? '🔴' : 
-                     status === 'Em Preparação' ? '🔵' : 
-                     status === 'Pedido Confirmado' ? '🟢' : '⚪';
-        csvContent += emoji + " " + status + ";;" + count + " pedidos;" + (count/totalPedidos*100).toFixed(1) + "%;📊 Status;;;;;;;;;\n";
-    });
-    
-    csvContent += "▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲\n\n";
-    
-    // 🎯 RODAPÉ ELEGANTE
-    csvContent += "═══════════════════════════════════════════════════════════════════════\n";
-    csvContent += "🏢 RELATÓRIO GERADO AUTOMATICAMENTE PELO SISTEMA D&Z DASHBOARD\n";
-    csvContent += "📅 Data/Hora: " + new Date().toLocaleString('pt-BR') + "\n";
-    csvContent += "👤 Sistema: Dashboard Executivo v2.0\n";
-    csvContent += "🏆 Qualidade: Relatório Premium\n";
-    csvContent += "© " + new Date().getFullYear() + " D&Z - Todos os direitos reservados\n";
-    csvContent += "═══════════════════════════════════════════════════════════════════════\n";
-    
-    // Criar e baixar arquivo
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `DZ_Relatorio_Premium_${dataInicio}_${dataFim}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Adicionar ao DOM e submeter
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
     
     // Feedback visual elegante
-    alert(`🎉 RELATÓRIO PREMIUM EXPORTADO COM SUCESSO!\n\n📁 Arquivo: DZ_Relatorio_Premium_${dataInicio}_${dataFim}.csv\n\n✨ CONTEÚDO PREMIUM INCLUSO:\n🎯 Resumo Executivo com Emojis\n📈 Evolução Diária Detalhada\n🏆 Top 5 Categorias com Rankings\n📋 ${totalPedidos} Pedidos Completamente Detalhados\n📊 Estatísticas Avançadas e Insights\n🎨 Design Visual Profissional\n\n💎 Perfeito para apresentações executivas!`);
+    setTimeout(() => {
+        console.log('🚀 Chamando showSuccessModal...');
+        showSuccessModal();
+    }, 1000);
 }
+
+// Função para mostrar modal elegante
+function showSuccessModal() {
+    console.log('🎯 Modal sendo aberto...');
+    const modal = document.getElementById('excelModal');
+    
+    if (!modal) {
+        console.log('❌ Modal não encontrado!');
+        return;
+    }
+    
+    const modalContent = modal.querySelector('.modal-content');
+    
+    if (!modalContent) {
+        console.log('❌ Modal content não encontrado!');
+        return;
+    }
+    
+    console.log('✅ Modal encontrado, exibindo...');
+    modal.style.display = 'block';
+    modalContent.style.animation = 'slideIn 0.5s ease-out';
+    
+    // Fechar modal automaticamente após 4 segundos
+    setTimeout(() => {
+        closeModal();
+    }, 4000);
+}
+
+function closeModal() {
+    console.log('🔄 Fechando modal...');
+    const modal = document.getElementById('excelModal');
+    
+    if (!modal) {
+        console.log('❌ Modal não encontrado ao fechar!');
+        return;
+    }
+    
+    const modalContent = modal.querySelector('.modal-content');
+    
+    if (modalContent) {
+        modalContent.style.animation = 'slideOut 0.3s ease-in';
+    }
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+        console.log('✅ Modal fechado com sucesso!');
+    }, 300);
+}
+
+// Fechar modal ao clicar fora
+window.onclick = function(event) {
+    const modal = document.getElementById('excelModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+
+// Sistema de tema já implementado no dashboard.js
+// Aplicar tema salvo na inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    const savedTheme = localStorage.getItem('darkTheme');
+    if (savedTheme === 'true') {
+        document.body.classList.add('dark-theme-variables');
+        
+        // Atualizar ícones do toggle
+        const sunIcon = document.querySelector('.theme-toggler span:nth-child(1)');
+        const moonIcon = document.querySelector('.theme-toggler span:nth-child(2)');
+        
+        if (sunIcon && moonIcon) {
+            sunIcon.classList.remove('active');
+            moonIcon.classList.add('active');
+        }
+        
+        console.log('Tema dark aplicado em analytics.php');
+    }
+});
 </script>
+
+<!-- Modal Elegante para Excel -->
+<div id="excelModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="success-icon">✅</div>
+            <h2>Excel Premium Gerado!</h2>
+            <button onclick="closeModal()" class="close-btn">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="file-info">
+                <div class="file-icon">📊</div>
+                <div class="file-details">
+                    <p><strong>Arquivo:</strong> DZ_Relatorio_Premium.xls</p>
+                    <p><strong>Status:</strong> <span class="status-success">Concluído</span></p>
+                </div>
+            </div>
+            
+            <div class="features-list">
+                <h3>🎨 Formatação Profissional:</h3>
+                <div class="feature-grid">
+                    <div class="feature-item">🏢 Cabeçalho D&Z elegante</div>
+                    <div class="feature-item">📊 Colunas auto-ajustáveis</div>
+                    <div class="feature-item">🎯 KPIs destacados</div>
+                    <div class="feature-item">📈 Evolução organizada</div>
+                    <div class="feature-item">🏆 Status coloridos</div>
+                    <div class="feature-item">💎 Design executivo</div>
+                </div>
+            </div>
+            
+            <div class="download-status">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <p>🚀 Pronto para apresentações executivas!</p>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button onclick="closeModal()" class="btn-elegant">
+                <span>Perfeito!</span>
+            </button>
+        </div>
+    </div>
+</div>
 
  </body>
 </html>
