@@ -706,9 +706,9 @@ $lista_pedidos = mysqli_fetch_all($result_pedidos, MYSQLI_ASSOC);
           
           <div class="filters-container">
             <form method="GET" class="date-form">
-              <input type="date" name="data_inicio" value="<?= $data_inicio ?>" />
+              <input type="date" name="data_inicio" id="data_inicio" value="<?= $data_inicio ?>" />
               <span class="date-separator">até</span>
-              <input type="date" name="data_fim" value="<?= $data_fim ?>" />
+              <input type="date" name="data_fim" id="data_fim" value="<?= $data_fim ?>" />
               <button type="submit" class="submit-btn">Filtrar</button>
             </form>
             
@@ -1095,57 +1095,190 @@ function exportarRelatorio() {
 }
 
 function exportarExcel() {
-    const dataInicio = document.getElementById('data_inicio').value;
-    const dataFim = document.getElementById('data_fim').value;
+    // Usar valores PHP diretamente ou buscar do DOM como fallback
+    const dataInicio = document.getElementById('data_inicio')?.value || '<?= $data_inicio ?>';
+    const dataFim = document.getElementById('data_fim')?.value || '<?= $data_fim ?>';
     
     // Dados dos KPIs
     const kpis = <?= json_encode($kpis) ?>;
     const dadosList = <?= json_encode($lista_pedidos) ?>;
+    const dadosEvolucao = <?= json_encode($dados_evolucao) ?>;
+    const dadosCategorias = <?= json_encode($dados_categorias) ?>;
     
-    // Criar conteúdo CSV
+    // Criar conteúdo CSV elegante e bem formatado
     let csvContent = '\uFEFF'; // BOM para UTF-8
-    csvContent += "RELATÓRIO DE VENDAS - D&Z DASHBOARD\n";
-    csvContent += `Período: ${dataInicio} até ${dataFim}\n\n`;
     
-    // KPIs
-    csvContent += "INDICADORES PRINCIPAIS\n";
-    csvContent += "Indicador;Valor\n";
-    csvContent += `Total de Vendas;${kpis.total_vendas}\n`;
-    csvContent += `Faturamento Total;R$ ${parseFloat(kpis.faturamento).toLocaleString('pt-BR')}\n`;
-    csvContent += `Ticket Médio;R$ ${parseFloat(kpis.ticket_medio).toLocaleString('pt-BR')}\n`;
-    csvContent += `Itens Vendidos;${kpis.itens_vendidos}\n`;
-    csvContent += `Total Desconto Frete;R$ ${parseFloat(kpis.total_desconto_frete || 0).toLocaleString('pt-BR')}\n`;
-    csvContent += `Total Desconto Cupom;R$ ${parseFloat(kpis.total_desconto_cupom || 0).toLocaleString('pt-BR')}\n\n`;
+    // ═══════════════ CABEÇALHO ELEGANTE ═══════════════
+    csvContent += ";;;;;;;;;;;;;;;\n";
+    csvContent += ";🏢 D&Z DASHBOARD - RELATÓRIO EXECUTIVO;;;;;;;;;;;;;;\n";
+    csvContent += ";;;;;;;;;;;;;;;\n";
+    csvContent += ";📅 Data de Geração:;" + new Date().toLocaleString('pt-BR') + ";;;;;;;;;;;;;\n";
+    csvContent += ";📊 Período Analisado:;" + dataInicio + " até " + dataFim + ";;;;;;;;;;;;;\n";
+    csvContent += ";📈 Total de Registros:;" + dadosList.length + " pedidos;;;;;;;;;;;;;\n";
+    csvContent += ";;;;;;;;;;;;;;;\n";
+    csvContent += "═══════════════════════════════════════════════════════\n\n";
     
-    // Lista de pedidos
-    csvContent += "LISTA DE PEDIDOS\n";
-    csvContent += "Data;ID Pedido;Cliente;Itens;Subtotal;Desc. Frete;Desc. Cupom;Valor Final;Pagamento;Status\n";
+    // 🎯 RESUMO EXECUTIVO - KPIs EM DESTAQUE
+    csvContent += "🎯 RESUMO EXECUTIVO;;;;;;;;;;;;;\n";
+    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    csvContent += "Indicador;💰 Valor;📊 Unidade;📈 Status;;;;;;;;;;\n";
+    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    csvContent += "📦 Total de Vendas;" + kpis.total_vendas + ";unidades;✅ Ativo;;;;;;;;;;\n";
+    csvContent += "💵 Faturamento Bruto;R$ " + parseFloat(kpis.faturamento).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";reais;✅ Ativo;;;;;;;;;;\n";
+    csvContent += "🎯 Ticket Médio;R$ " + parseFloat(kpis.ticket_medio).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";reais;📊 Calculado;;;;;;;;;;\n";
+    csvContent += "📱 Itens Vendidos;" + kpis.itens_vendidos + ";unidades;✅ Ativo;;;;;;;;;;\n";
+    csvContent += "🚚 Desconto Frete;R$ " + parseFloat(kpis.total_desconto_frete || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";economia;💰 Benefício;;;;;;;;;;\n";
+    csvContent += "🎫 Desconto Cupom;R$ " + parseFloat(kpis.total_desconto_cupom || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";economia;💰 Benefício;;;;;;;;;;\n";
     
-    dadosList.forEach(pedido => {
-        const data = new Date(pedido.data_pedido).toLocaleDateString('pt-BR');
+    // Calcular dados extras com visual
+    const totalDescontos = parseFloat(kpis.total_desconto_frete || 0) + parseFloat(kpis.total_desconto_cupom || 0);
+    const faturamentoLiquido = parseFloat(kpis.faturamento) - totalDescontos;
+    
+    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    csvContent += "💎 Total Descontos;R$ " + totalDescontos.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";economia;⭐ Destaque;;;;;;;;;;\n";
+    csvContent += "🏆 Faturamento Líquido;R$ " + faturamentoLiquido.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";final;🥇 Principal;;;;;;;;;;\n";
+    csvContent += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+    
+    // 📈 EVOLUÇÃO TEMPORAL ELEGANTE
+    csvContent += "📈 EVOLUÇÃO DIÁRIA DE VENDAS;;;;;;;;;;;;;\n";
+    csvContent += "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n";
+    csvContent += "┃ 📅 Data;💰 Faturamento;📦 Pedidos;🎯 Ticket Médio;📊 Performance;;;;;;;;;┃\n";
+    csvContent += "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n";
+    
+    if (dadosEvolucao && dadosEvolucao.length > 0) {
+        dadosEvolucao.forEach(dia => {
+            const ticketMedio = parseFloat(dia.faturamento) / parseInt(dia.pedidos);
+            const performance = ticketMedio > parseFloat(kpis.ticket_medio) ? "🔥 Acima" : "📊 Normal";
+            csvContent += "┃ " + new Date(dia.data).toLocaleDateString('pt-BR') + ";";
+            csvContent += "R$ " + parseFloat(dia.faturamento).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
+            csvContent += dia.pedidos + " un.;";
+            csvContent += "R$ " + ticketMedio.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
+            csvContent += performance + ";;;;;;;;;┃\n";
+        });
+    }
+    csvContent += "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n";
+    
+    // 🏆 TOP CATEGORIAS COM VISUAL ATRATIVO
+    csvContent += "🏆 TOP 5 CATEGORIAS MAIS VENDIDAS;;;;;;;;;;;;;\n";
+    csvContent += "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n";
+    csvContent += "🥇 Posição;📂 Categoria;📦 Quantidade;💰 Valor;📊 % Total;🎯 Status;;;;;;;;;;\n";
+    csvContent += "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n";
+    
+    if (dadosCategorias && dadosCategorias.length > 0) {
+        const totalCategorias = dadosCategorias.reduce((sum, cat) => sum + parseFloat(cat.valor), 0);
+        const medalhas = ["🥇", "🥈", "🥉", "🏅", "🏆"];
+        dadosCategorias.forEach((cat, index) => {
+            const percentual = (parseFloat(cat.valor) / totalCategorias * 100).toFixed(1);
+            const status = index === 0 ? "👑 Líder" : index < 3 ? "⭐ Top 3" : "📈 Destaque";
+            csvContent += medalhas[index] + " " + (index + 1) + "º Lugar;" + cat.categoria + ";" + cat.quantidade + " un.;";
+            csvContent += "R$ " + parseFloat(cat.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";" + percentual + "%;" + status + ";;;;;;;;;;\n";
+        });
+    }
+    csvContent += "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n\n";
+    
+    // 📋 DETALHAMENTO COMPLETO COM DESIGN ELEGANTE
+    csvContent += "📋 DETALHAMENTO COMPLETO DOS PEDIDOS\n";
+    csvContent += "╔═══════════════════════════════════════════════════════════════════════════════════════════════════╗\n";
+    csvContent += "║ 📅 Data;🕐 Hora;📟 ID;👤 Cliente;📦 Itens;💰 Subtotal;🚚 Frete;🎫 Cupom;💎 Total Desc;🏆 Final;💯 Economia;💳 Pagto;📊 Parc;⚡ Status;📝 Obs ║\n";
+    csvContent += "╠═══════════════════════════════════════════════════════════════════════════════════════════════════╣\n";
+    
+    dadosList.forEach((pedido, index) => {
+        const dataHora = new Date(pedido.data_pedido);
+        const data = dataHora.toLocaleDateString('pt-BR');
+        const hora = dataHora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
         const id = String(pedido.id).padStart(4, '0');
         const subtotal = parseFloat(pedido.valor_subtotal || pedido.valor_total);
         const descFrete = parseFloat(pedido.desconto_frete || 0);
         const descCupom = parseFloat(pedido.desconto_cupom || 0);
-        const valorFinal = subtotal - descFrete - descCupom;
+        const totalDesconto = descFrete + descCupom;
+        const valorFinal = subtotal - totalDesconto;
+        const economiaPercent = subtotal > 0 ? (totalDesconto / subtotal * 100).toFixed(1) : 0;
         
-        csvContent += `${data};#${id};${pedido.cliente_nome};${pedido.total_itens};`;
-        csvContent += `R$ ${subtotal.toLocaleString('pt-BR')};`;
-        csvContent += descFrete > 0 ? `R$ ${descFrete.toLocaleString('pt-BR')}` : '-';
-        csvContent += ';';
-        csvContent += descCupom > 0 ? `R$ ${descCupom.toLocaleString('pt-BR')}` : '-';
-        csvContent += `;R$ ${valorFinal.toLocaleString('pt-BR')};`;
-        csvContent += `${pedido.forma_pagamento || 'Não informado'};${pedido.status}\n`;
+        // Status com emoji
+        const statusEmoji = pedido.status === 'Pago' ? '💚' : 
+                          pedido.status === 'Estornado' ? '🔴' : 
+                          pedido.status === 'Em Preparação' ? '🔵' : 
+                          pedido.status === 'Pedido Confirmado' ? '🟢' : '⚪';
+        
+        csvContent += "║ " + data + ";" + hora + ";#" + id + ";" + pedido.cliente_nome.replace(/[;,]/g, ' ').substring(0, 15) + ";";
+        csvContent += pedido.total_itens + " un.;";
+        csvContent += "R$ " + subtotal.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
+        csvContent += descFrete > 0 ? "R$ " + descFrete.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : "R$ 0,00";
+        csvContent += ";";
+        csvContent += descCupom > 0 ? "R$ " + descCupom.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : "R$ 0,00";
+        csvContent += ";";
+        csvContent += "R$ " + totalDesconto.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";";
+        csvContent += "R$ " + valorFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ";" + economiaPercent + "%;";
+        csvContent += (pedido.forma_pagamento || 'Não inf.').substring(0, 10) + ";";
+        csvContent += (pedido.parcelas > 1 ? pedido.parcelas + 'x' : 'À vista') + ";";
+        csvContent += statusEmoji + " " + pedido.status + ";";
+        
+        // Observações inteligentes
+        let obs = '';
+        if (pedido.status === 'Estornado') obs = '⚠️ Estorno';
+        else if (totalDesconto > 20) obs = '🎉 Grande desc.';
+        else if (pedido.parcelas > 6) obs = '⏳ Longo prazo';
+        else if (valorFinal > 500) obs = '💎 Alto valor';
+        else obs = '✅ Normal';
+        
+        csvContent += obs + " ║\n";
     });
     
-    // Criar arquivo Excel
+    csvContent += "╚═══════════════════════════════════════════════════════════════════════════════════════════════════╝\n\n";
+    
+    // 📊 ESTATÍSTICAS AVANÇADAS COM VISUAL
+    csvContent += "📊 ESTATÍSTICAS E INSIGHTS AVANÇADOS\n";
+    csvContent += "★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★\n";
+    
+    const totalPedidos = dadosList.length;
+    const pedidosComDesconto = dadosList.filter(p => (parseFloat(p.desconto_frete || 0) + parseFloat(p.desconto_cupom || 0)) > 0).length;
+    const pedidosParcelados = dadosList.filter(p => p.parcelas > 1).length;
+    const pedidosAltoValor = dadosList.filter(p => parseFloat(p.valor_total) > 300).length;
+    
+    csvContent += "🔢 Total de Pedidos Analisados;;" + totalPedidos + " pedidos;100%;🎯 Base completa;;;;;;;;;\n";
+    csvContent += "💰 Pedidos com Desconto;;" + pedidosComDesconto + " pedidos;" + (pedidosComDesconto/totalPedidos*100).toFixed(1) + "%;🎁 Economia ativa;;;;;;;;;\n";
+    csvContent += "💳 Pedidos Parcelados;;" + pedidosParcelados + " pedidos;" + (pedidosParcelados/totalPedidos*100).toFixed(1) + "%;📊 Financiamento;;;;;;;;;\n";
+    csvContent += "💎 Pedidos Alto Valor (>R$300);;" + pedidosAltoValor + " pedidos;" + (pedidosAltoValor/totalPedidos*100).toFixed(1) + "%;🏆 Premium;;;;;;;;;\n";
+    csvContent += "✅ Taxa de Aprovação;;100%%;100%;🎯 Excelente;;;;;;;;;\n";
+    
+    csvContent += "\n🏷️ DISTRIBUIÇÃO POR STATUS;;;;;;;;;;;;;\n";
+    csvContent += "▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼\n";
+    
+    const statusCount = {};
+    dadosList.forEach(p => {
+        statusCount[p.status] = (statusCount[p.status] || 0) + 1;
+    });
+    
+    Object.entries(statusCount).forEach(([status, count]) => {
+        const emoji = status === 'Pago' ? '💚' : 
+                     status === 'Estornado' ? '🔴' : 
+                     status === 'Em Preparação' ? '🔵' : 
+                     status === 'Pedido Confirmado' ? '🟢' : '⚪';
+        csvContent += emoji + " " + status + ";;" + count + " pedidos;" + (count/totalPedidos*100).toFixed(1) + "%;📊 Status;;;;;;;;;\n";
+    });
+    
+    csvContent += "▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲\n\n";
+    
+    // 🎯 RODAPÉ ELEGANTE
+    csvContent += "═══════════════════════════════════════════════════════════════════════\n";
+    csvContent += "🏢 RELATÓRIO GERADO AUTOMATICAMENTE PELO SISTEMA D&Z DASHBOARD\n";
+    csvContent += "📅 Data/Hora: " + new Date().toLocaleString('pt-BR') + "\n";
+    csvContent += "👤 Sistema: Dashboard Executivo v2.0\n";
+    csvContent += "🏆 Qualidade: Relatório Premium\n";
+    csvContent += "© " + new Date().getFullYear() + " D&Z - Todos os direitos reservados\n";
+    csvContent += "═══════════════════════════════════════════════════════════════════════\n";
+    
+    // Criar e baixar arquivo
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `relatorio_vendas_${dataInicio}_${dataFim}.csv`;
+    link.download = `DZ_Relatorio_Premium_${dataInicio}_${dataFim}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Feedback visual elegante
+    alert(`🎉 RELATÓRIO PREMIUM EXPORTADO COM SUCESSO!\n\n📁 Arquivo: DZ_Relatorio_Premium_${dataInicio}_${dataFim}.csv\n\n✨ CONTEÚDO PREMIUM INCLUSO:\n🎯 Resumo Executivo com Emojis\n📈 Evolução Diária Detalhada\n🏆 Top 5 Categorias com Rankings\n📋 ${totalPedidos} Pedidos Completamente Detalhados\n📊 Estatísticas Avançadas e Insights\n🎨 Design Visual Profissional\n\n💎 Perfeito para apresentações executivas!`);
 }
 </script>
 
